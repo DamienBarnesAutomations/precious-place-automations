@@ -102,3 +102,55 @@ async def add_new_ingredient(name: str, stock: float, unit: str, cost: float) ->
 async def update_ingredient_price(ingredient_id: str, new_price: float) -> bool:
     """Placeholder: Updates the price of an existing ingredient and logs the change."""
     return True
+    
+async def add_new_ingredient(name: str, stock: float, unit: str, cost: float) -> str:
+    # ... (P3.1.4 implementation remains here) ...
+    # This is not modified in this step.
+    pass
+
+
+async def update_ingredient_price(ingredient_id: str, new_price: float) -> bool:
+    """
+    Updates the price of an existing ingredient and logs the change to Price_History.
+    
+    Returns True on success, False if the ingredient ID is not found.
+    """
+    # 1. Find the existing ingredient record to get the OLD price
+    
+    # NOTE: We use get_all_records() and filter manually for simplicity, 
+    # as gspread's find() returns only the cell, not the record dictionary.
+    
+    all_ingredients = queries.get_all_records(INGREDIENTS_SHEET)
+    current_record = next((i for i in all_ingredients if i.get('ID') == ingredient_id), None)
+    
+    if not current_record:
+        # Ingredient ID not found in the sheet
+        return False 
+
+    # Safely retrieve the old price, converting it to float
+    try:
+        old_price = float(current_record.get('Current_Cost_per_Unit', 0.0))
+    except (ValueError, TypeError):
+        old_price = 0.0
+    
+    
+    # 2. Update the 'Ingredients' sheet with the new price
+    updates = {
+        "Current_Cost_per_Unit": new_price
+    }
+    # P2.5: update_row_by_id handles finding the row by ID and updating Last_Updated
+    update_success = queries.update_row_by_id(INGREDIENTS_SHEET, ingredient_id, updates)
+    
+    
+    # 3. Log the change to the 'Price_History' sheet
+    if update_success:
+        price_history_log = {
+            "Ingredient_ID": ingredient_id,
+            "Timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+            "Old_Price": old_price,
+            "New_Price": new_price
+        }
+        # P2.6: Use append_row to add the log record
+        queries.append_row(PRICE_HISTORY_SHEET, price_history_log)
+        
+    return update_success
