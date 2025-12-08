@@ -90,3 +90,36 @@ def update_row_by_id(sheet_name: str, id_value: str, updates: dict, use_cron_she
     except Exception as e:
         print(f"Error during sheet update for {id_value}: {e}")
         return False   
+
+
+# sheets/queries.py (Add this function)
+
+def append_row(sheet_name: str, data: dict, use_cron_sheet: bool = False) -> bool:
+    """
+    Appends a new row to the specified sheet.
+    
+    The 'data' dictionary must map column headers to values.
+    The values are inserted in the exact order of the sheet's column headers.
+    """
+    sheet = get_worksheet(sheet_name, use_cron_sheet)
+    
+    try:
+        # 1. Get the column headers from the first row
+        headers = sheet.row_values(1)
+        
+        # 2. Build the list of values in the correct column order
+        row_values = []
+        for header in headers:
+            # Retrieve the value from the input data, default to an empty string if key is missing
+            value = data.get(header, "")
+            
+            # Append the string representation of the value
+            row_values.append(str(value))
+        
+        # 3. Append the row to the sheet
+        sheet.append_row(row_values)
+        return True
+    
+    except Exception as e:
+        print(f"Error during sheet append to {sheet_name}: {e}")
+        return False
