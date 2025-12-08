@@ -154,3 +154,32 @@ async def update_ingredient_price(ingredient_id: str, new_price: float) -> bool:
         queries.append_row(PRICE_HISTORY_SHEET, price_history_log)
         
     return update_success
+    
+async def get_ingredient_stock(ingredient_id: str) -> dict | None:
+    """
+    Retrieves the name, current stock, and unit of measure for a given ingredient ID.
+    
+    Returns a dictionary of the required info or None if the ID is not found.
+    """
+    # 1. Get all ingredient records
+    all_ingredients = queries.get_all_records(INGREDIENTS_SHEET)
+    
+    # 2. Search for the specific ingredient ID
+    current_record = next((i for i in all_ingredients if i.get('ID') == ingredient_id), None)
+    
+    if not current_record:
+        return None 
+
+    # 3. Extract and return the required fields
+    try:
+        stock_info = {
+            "name": current_record.get('Name'),
+            # Convert stock to float for accurate display/future calculations
+            "stock": float(current_record.get('Current_Stock', 0.0)),
+            "unit": current_record.get('Unit_of_Measure')
+        }
+        return stock_info
+    except (ValueError, TypeError) as e:
+        # Handle cases where stock might be non-numeric (data integrity issue)
+        print(f"Error converting stock value for {ingredient_id}: {e}")
+        return None
