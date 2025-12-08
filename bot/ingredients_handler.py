@@ -12,6 +12,12 @@ import re
     INGREDIENT_COST,
 ) = range(4) 
 
+# --- Conversation States (NEW for /updateprice) ---
+(
+    PRICE_GET_ID,
+    PRICE_GET_NEW_VALUE,
+) = range(4, 6) # Start ranging from 4 to avoid conflict with existing states
+
 
 async def start_add(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     """Starts the conversation and asks the user for the ingredient name."""
@@ -136,7 +142,81 @@ async def cancel(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     await update.message.reply_text("🚫 Ingredient setup canceled. Type /add to start over.")
     return ConversationHandler.END
 
+# bot/ingredients_handler.py (Add new functions)
 
+async def start_update_price(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    """Starts the conversation and asks for the ingredient ID."""
+    await update.message.reply_text(
+        "📝 **Update Ingredient Price**\n\nPlease provide the **ID** of the ingredient you want to update (e.g., `ING001`).",
+        parse_mode="Markdown"
+    )
+    return PRICE_GET_ID
+
+
+async def get_new_price_value(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    """Saves the ingredient ID and asks for the new price."""
+    ingredient_id = update.message.text.strip().upper()
+    
+    # 🚨 NOTE: We should validate if the ID exists here by calling a service function.
+    # For now, we save and assume it's valid, as the service function will check it later.
+    
+    context.user_data["temp_price_update_id"] = ingredient_id
+
+    await update.message.reply_text(
+        f"✅ Saved ID: **{ingredient_id}**.\n\nWhat is the **New Cost per Unit** in euros (number only)?",
+        parse_mode="Markdown"
+    )
+    return PRICE_GET_NEW_VALUE
+
+
+async def finish_update_price(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    """Saves the new price, calls the service function to update the sheet, and ends the conversation."""
+    try:
+        new_price = float(update.message.text)
+        if new_price <= 0:
+            raise ValueError
+        
+        ingredient_id = context.user_data.get("temp_price_update_id")
+        
+        # --- P3.1.6 DEPENDENCY: Call the service to update the price ---
+        success = await ingredients.update_ingredient_price(ingredient_id, new_price)
+        # --- END DEPENDENCY ---
+        
+        if success:
+            await update.message.reply_text(
+                f"💰 **Success!** Price updated for **`{ingredient_id}`**.\n\n"
+                f"**New Cost per Unit:** {new_price:.2f} €.\n"
+                f"*(Price history logged.)*",
+                parse_mode="Markdown"
+            )
+        else:
+             await update.message.reply_text(
+                f"❌ Update failed. Ingredient ID **`{ingredient_id}`** was not found in the sheet.",
+                parse_mode="Markdown"
+            )
+
+        context.user_data.clear()
+        return ConversationHandler.END
+        
+    except ValueError:
+        await update.message.reply_text(
+            "❌ Invalid input. Price must be a **positive number**.\n\nPlease re-enter the New Cost per Unit:",
+            parse_mode="Markdown"
+        )
+        return PRICE_GET_NEW_VALUE # Stay in the same state
+    except Exception as e:
+        await update.message.reply_text(
+            f"❌ An error occurred while saving: {e}\n\nPlease try again later or type /cancel.",
+            parse_mode="Markdown"
+        )
+        return ConversationHandler.END
+
+
+async def cancel_price_update(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    """Cancels and ends the conversation."""
+    context.user_data.clear()
+    await update.message.reply_text("🚫 Price update canceled. Type /updateprice to start over.")
+    return ConversationHandler.END
 # --- Exportable Conversation Handler Object ---
 
 ADD_INGREDIENT_CONVERSATION_HANDLER = ConversationHandler(
@@ -156,4 +236,17 @@ ADD_INGREDIENT_CONVERSATION_HANDLER = ConversationHandler(
     },
     
     fallbacks=[CommandHandler("cancel", cancel)],
+)
+
+UPDATE_PRICE_CONVERSATION_HANDLER = ConversationHandler(
+    entry_points=[CommandHandler("updateprice", start_update_price)],
+    
+    states={
+        PRICE_GET_ID: [MessageHandler(filters.TEXT & ~filters.COMMAND, get_new_price_value)],
+        
+        # State 2: Price collection, requires validation and final save
+        PRICE_GET_NEW_VALUE: [MessageHandler(filters.TEXT & ~filters.COMMAND, finish_update_price)],
+    },
+    
+    fallbacks=[CommandHandler("cancel", cancel_price_update)],
 )
