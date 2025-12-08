@@ -21,14 +21,14 @@ if not GOOGLE_SHEETS_NAME_BAKERY:
 def get_primary_spreadsheet() -> gspread.Spreadsheet:
     """Returns the main project spreadsheet object (Live Data)."""
     client = get_sheets_client()
-    return client.open(GOOGLE_SHEETS_NAME_BAKERY)
+    return client.open_by_key(GOOGLE_SHEETS_NAME_BAKERY)
 
 def get_cron_spreadsheet() -> gspread.Spreadsheet:
     """Returns the spreadsheet object used for cron job aggregates (Read-Only Data)."""
     if not GOOGLE_SHEETS_NAME_ANALYTICS:
         raise ValueError("CRON spreadsheet name is not configured.")
     client = get_sheets_client()
-    return client.open(GOOGLE_SHEETS_NAME_ANALYTICS)
+    return client.open_by_key(GOOGLE_SHEETS_NAME_ANALYTICS)
 
 def get_worksheet(sheet_name: str, use_cron_sheet: bool = False) -> gspread.Worksheet:
     """Returns a specific worksheet (tab) object from either the primary or cron sheet."""
