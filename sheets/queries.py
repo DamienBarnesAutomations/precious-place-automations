@@ -1,11 +1,17 @@
+import logging
 import gspread
 from datetime import datetime
 import os
-from sheets.client import get_sheets_client # Assuming this file is set up for auth
+from sheets.client import get_sheets_client 
+
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
 # --- Configuration (Based on P2.2) ---
 GOOGLE_SHEETS_NAME_BAKERY = os.getenv("GOOGLE_SHEETS_NAME_BAKERY")
 GOOGLE_SHEETS_NAME_ANALYTICS = os.getenv("GOOGLE_SHEETS_NAME_ANALYTICS")
+
+print("GOOGLE_SHEETS_NAME_BAKERY", GOOGLE_SHEETS_NAME_BAKERY)
+print("GOOGLE_SHEETS_NAME_ANALYTICS", GOOGLE_SHEETS_NAME_ANALYTICS)
 
 if not GOOGLE_SHEETS_NAME_BAKERY:
     raise ValueError("GOOGLE_SHEETS_NAME_BAKERY environment variable is not set!")
@@ -26,12 +32,31 @@ def get_cron_spreadsheet() -> gspread.Spreadsheet:
 
 def get_worksheet(sheet_name: str, use_cron_sheet: bool = False) -> gspread.Worksheet:
     """Returns a specific worksheet (tab) object from either the primary or cron sheet."""
-    if use_cron_sheet:
-        spreadsheet = get_cron_spreadsheet()
-    else:
-        spreadsheet = get_primary_spreadsheet()
+    
+    sheet_type = "CRON (Analytics)" if use_cron_sheet else "PRIMARY (Bakery)"
+    logging.info(f"Attempting to retrieve worksheet: '{sheet_name}' from {sheet_type} spreadsheet.")
+    
+    try:
+        if use_cron_sheet:
+            spreadsheet = get_cron_spreadsheet()
+        else:
+            spreadsheet = get_primary_spreadsheet()
         
-    return spreadsheet.worksheet(sheet_name)
+        # This line can throw a gspread.exceptions.WorksheetNotFound if the tab name is wrong.
+        worksheet = spreadsheet.worksheet(sheet_name)
+        
+        logging.info(f"Successfully retrieved worksheet: '{sheet_name}'.")
+        return worksheet
+        
+    except gspread.exceptions.WorksheetNotFound:
+        logging.error(f"FATAL Error: Worksheet/Tab '{sheet_name}' not found in the {sheet_type} spreadsheet.", exc_info=False)
+        # Re-raise the exception so the calling function can handle the failure
+        raise
+    
+    except Exception as e:
+        # Catch any other connection or API errors
+        logging.error(f"FATAL Error retrieving spreadsheet or worksheet: {e}", exc_info=True)
+        raise
     
 # sheets/queries.py (Add this after the accessors)
 
@@ -101,9 +126,11 @@ def append_row(sheet_name: str, data: dict, use_cron_sheet: bool = False) -> boo
     The 'data' dictionary must map column headers to values.
     The values are inserted in the exact order of the sheet's column headers.
     """
-    sheet = get_worksheet(sheet_name, use_cron_sheet)
+    logging.info(f"Attempting to append new row to sheet: {sheet_name} (Cron Sheet: {use_cron_sheet})")
     
     try:
+        sheet = get_worksheet(sheet_name, use_cron_sheet)
+        
         # 1. Get the column headers from the first row
         headers = sheet.row_values(1)
         
@@ -116,10 +143,16 @@ def append_row(sheet_name: str, data: dict, use_cron_sheet: bool = False) -> boo
             # Append the string representation of the value
             row_values.append(str(value))
         
+        logging.debug(f"Row prepared for append (Sheet: {sheet_name}): {row_values}")
+        
         # 3. Append the row to the sheet
         sheet.append_row(row_values)
+        
+        logging.info(f"Successfully appended row to sheet: {sheet_name}")
         return True
     
     except Exception as e:
-        print(f"Error during sheet append to {sheet_name}: {e}")
+        # Use logging.error for exceptions, providing the traceback information
+        logging.error(f"FATAL Error during sheet append to {sheet_name}.", exc_info=True)
+        logging.error(f"Failed to append row. Data intended for sheet: {data}. Error: {e}")
         return False
