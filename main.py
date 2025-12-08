@@ -39,6 +39,13 @@ async def telegram_webhook(request: Request):
     """
     Endpoint to receive all incoming updates from Telegram.
     """
+    
+     # --- CRITICAL FIX ---
+    # The application must be initialized before processing the update.
+    if not app_initialized:
+        await application.initialize()
+        app_initialized = True
+    # --------------------
     try:
         # Get the JSON data from the request
         data = await request.json()
