@@ -18,6 +18,8 @@ import re
     PRICE_GET_NEW_VALUE,
 ) = range(4, 6) # Start ranging from 4 to avoid conflict with existing states
 
+STOCK_GET_ID = range(6, 7)[0] # State ID 6
+
 
 async def start_add(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     """Starts the conversation and asks the user for the ingredient name."""
@@ -219,6 +221,47 @@ async def cancel_price_update(update: Update, context: ContextTypes.DEFAULT_TYPE
     return ConversationHandler.END
 # --- Exportable Conversation Handler Object ---
 
+async def start_show_stock(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    """Starts the conversation and asks for the ingredient ID."""
+    await update.message.reply_text(
+        "📦 **Show Stock**\n\nPlease provide the **ID** of the ingredient you want to check (e.g., `ING001`).",
+        parse_mode="Markdown"
+    )
+    return STOCK_GET_ID
+
+
+async def finish_show_stock(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    """Gets the ingredient ID, retrieves its stock, and ends the conversation."""
+    ingredient_id = update.message.text.strip().upper()
+    
+    # --- P3.1.7 DEPENDENCY: Call the service to retrieve stock ---
+    # We will implement this function in the service layer next.
+    stock_info = await ingredients.get_ingredient_stock(ingredient_id) 
+    # stock_info is expected to be {'name': str, 'stock': float, 'unit': str} or None
+    # --- END DEPENDENCY ---
+    
+    if stock_info:
+        await update.message.reply_text(
+            f"✅ **Stock for {stock_info['name']}** (`{ingredient_id}`):\n\n"
+            f"**Current Stock:** {stock_info['stock']} {stock_info['unit']}",
+            parse_mode="Markdown"
+        )
+    else:
+         await update.message.reply_text(
+            f"❌ Ingredient ID **`{ingredient_id}`** was not found in the sheet.",
+            parse_mode="Markdown"
+        )
+
+    context.user_data.clear()
+    return ConversationHandler.END
+
+
+async def cancel_stock_inquiry(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    """Cancels and ends the conversation."""
+    context.user_data.clear()
+    await update.message.reply_text("🚫 Stock inquiry canceled. Type /showstock to start over.")
+    return ConversationHandler.END
+
 ADD_INGREDIENT_CONVERSATION_HANDLER = ConversationHandler(
     entry_points=[CommandHandler("add", start_add)],
     
@@ -249,4 +292,14 @@ UPDATE_PRICE_CONVERSATION_HANDLER = ConversationHandler(
     },
     
     fallbacks=[CommandHandler("cancel", cancel_price_update)],
+)
+
+SHOW_STOCK_CONVERSATION_HANDLER = ConversationHandler(
+    entry_points=[CommandHandler("showstock", start_show_stock)],
+    
+    states={
+        STOCK_GET_ID: [MessageHandler(filters.TEXT & ~filters.COMMAND, finish_show_stock)],
+    },
+    
+    fallbacks=[CommandHandler("cancel", cancel_stock_inquiry)],
 )

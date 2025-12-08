@@ -8,7 +8,8 @@ from starlette.responses import HTMLResponse
 # Import the necessary handler object
 from bot.ingredients_handler import (
     ADD_INGREDIENT_CONVERSATION_HANDLER,
-    UPDATE_PRICE_CONVERSATION_HANDLER 
+    UPDATE_PRICE_CONVERSATION_HANDLER,
+    SHOW_STOCK_CONVERSATION_HANDLER, # <-- NEW IMPORT
 )
 
 # --- Configuration ---
@@ -30,7 +31,8 @@ application = (
 
 # 🔑 Register the imported Conversation Handler
 application.add_handler(ADD_INGREDIENT_CONVERSATION_HANDLER)
-application.add_handler(UPDATE_PRICE_CONVERSATION_HANDLER) # <-- REGISTER NEW HANDLER
+application.add_handler(UPDATE_PRICE_CONVERSATION_HANDLER) 
+application.add_handler(SHOW_STOCK_CONVERSATION_HANDLER) 
 
 
 # Global flag to track if the application has been initialized (Fix for UnboundLocalError)
