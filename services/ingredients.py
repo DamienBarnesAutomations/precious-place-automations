@@ -80,9 +80,9 @@ async def add_new_ingredient(name: str, stock: float, unit: str, cost: float) ->
     new_ingredient_data = {
         "ID": new_id,
         "Name": name,
-        "Current_Stock": stock,
-        "Unit_of_Measure": unit,
-        "Current_Cost_per_Unit": cost,
+        "Quantity": stock,
+        "Unit": unit,
+        "Cost Per Unit": cost,
         # Last_Updated is handled by the append_row function in the utility layer,
         # but since append_row doesn't manage timestamps automatically (only update_row_by_id does), 
         # we MUST include it here.
