@@ -98,17 +98,6 @@ async def add_new_ingredient(name: str, stock: float, unit: str, cost: float) ->
         return "ERROR_SAVE_FAILED"
 
 
-# Placeholder for P3.1.6
-async def update_ingredient_price(ingredient_id: str, new_price: float) -> bool:
-    """Placeholder: Updates the price of an existing ingredient and logs the change."""
-    return True
-    
-async def add_new_ingredient(name: str, stock: float, unit: str, cost: float) -> str:
-    # ... (P3.1.4 implementation remains here) ...
-    # This is not modified in this step.
-    pass
-
-
 async def update_ingredient_price(ingredient_id: str, new_price: float) -> bool:
     """
     Updates the price of an existing ingredient and logs the change to Price_History.
