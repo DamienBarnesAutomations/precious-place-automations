@@ -31,6 +31,8 @@ def get_sheets_client():
         SERVICE_ACCOUNT_FILE, scopes=SCOPES
     )
 
+    print("✅ SUCCESS: Google Sheets Service Account Key loaded correctly!")
+     
     # 4. Return the gspread client object
     return gspread.client.Client(auth=credentials)
 
