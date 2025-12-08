@@ -1,6 +1,6 @@
 from telegram import Update
 from telegram.ext import ContextTypes, ConversationHandler, CommandHandler, MessageHandler, filters
-from services import ingredients # We will use the service module to save data
+from services import ingredients 
 import re
 
 # --- Conversation States ---
@@ -19,6 +19,8 @@ import re
 ) = range(4, 6) # Start ranging from 4 to avoid conflict with existing states
 
 STOCK_GET_ID = range(6, 7)[0] # State ID 6
+
+INGREDIENT_MANAGER_MODE = range(7, 8)[0] # State ID 7
 
 
 async def start_add(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
@@ -261,6 +263,32 @@ async def cancel_stock_inquiry(update: Update, context: ContextTypes.DEFAULT_TYP
     context.user_data.clear()
     await update.message.reply_text("🚫 Stock inquiry canceled. Type /showstock to start over.")
     return ConversationHandler.END
+    
+async def enter_manager_mode(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    """
+    Starts the conversation when the user types 'Manage Ingredients' (or similar command).
+    Sets the bot into a state where it expects natural language actions.
+    """
+    context.user_data['mode'] = 'INGREDIENT_MANAGER'
+    await update.message.reply_text(
+        "📝 **Ingredient Manager Mode**\n\n"
+        "I'm now ready to accept natural language commands.\n"
+        "Try sending: `Bought 1 kg Flour for 5` or `Update Flour unit cost to 5`.\n"
+        "Type `STOP` to exit this mode.",
+        parse_mode="Markdown"
+    )
+    # Move to the special state where we listen for NLP commands
+    return INGREDIENT_MANAGER_MODE
+
+
+async def exit_manager_mode(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    """Exits the Ingredient Manager Mode."""
+    context.user_data.pop('mode', None)
+    await update.message.reply_text("👋 Exited Ingredient Manager Mode. Commands like `/add` or `/showstock` are available again.")
+    # End the conversation and return to global handlers
+    return ConversationHandler.END
+    
+    
 
 ADD_INGREDIENT_CONVERSATION_HANDLER = ConversationHandler(
     entry_points=[CommandHandler("add", start_add)],
@@ -302,4 +330,24 @@ SHOW_STOCK_CONVERSATION_HANDLER = ConversationHandler(
     },
     
     fallbacks=[CommandHandler("cancel", cancel_stock_inquiry)],
+)
+
+MANAGER_MODE_CONVERSATION_HANDLER = ConversationHandler(
+    entry_points=[
+        MessageHandler(
+            filters.Regex(r'^(Manage Ingredients|manager)$', flags=re.IGNORECASE) & ~filters.COMMAND, 
+            enter_manager_mode
+        )
+    ],
+    
+    states={
+        # P3.1.R2 will implement the dispatcher function that handles NLP here
+        INGREDIENT_MANAGER_MODE: [
+            # Placeholder for the NLP dispatcher we will build in the next step
+            MessageHandler(filters.TEXT & ~filters.COMMAND, lambda u, c: INGREDIENT_MANAGER_MODE) 
+        ],
+    },
+    
+    # We use a specific keyword 'STOP' to leave the mode
+    fallbacks=[MessageHandler(filters.Regex(r'^STOP$', flags=re.IGNORECASE), exit_manager_mode)],
 )
