@@ -1,0 +1,9 @@
+# Python
+__pycache__/
+*.pyc
+venv/
+
+# Credentials & Secrets
+*.env
+*.json          # This is essential to ignore your Service Account JSON key
+sheets/*.json   # Be explicit about your credentials location

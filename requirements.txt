@@ -1,0 +1,6 @@
+fastapi
+uvicorn
+python-telegram-bot
+pydantic
+gspread # The library for interacting with Google Sheets
+google-auth # Google authentication core library
