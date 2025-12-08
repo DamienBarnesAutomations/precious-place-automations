@@ -4,11 +4,11 @@ import os
 from sheets.client import get_sheets_client # Assuming this file is set up for auth
 
 # --- Configuration (Based on P2.2) ---
-GOOGLE_SHEETS_NAME_BAKERY = os.getenv("GOOGLE_SHEET_NAME_PRIMARY")
+GOOGLE_SHEETS_NAME_BAKERY = os.getenv("GOOGLE_SHEETS_NAME_BAKERY")
 GOOGLE_SHEETS_NAME_ANALYTICS = os.getenv("GOOGLE_SHEETS_NAME_ANALYTICS")
 
 if not GOOGLE_SHEETS_NAME_BAKERY:
-    raise ValueError("GOOGLE_SHEET_NAME_PRIMARY environment variable is not set!")
+    raise ValueError("GOOGLE_SHEETS_NAME_BAKERY environment variable is not set!")
 
 # --- P2.3 Implementation: Sheet Accessors ---
 
