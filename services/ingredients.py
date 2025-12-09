@@ -160,6 +160,34 @@ def _generate_and_commit_new_id(key_prefix: str, config_key: str) -> str:
 
 # --- Core Service Functions ---
 
+async def get_ingredient_id_by_name(name: str) -> str | None:
+    """
+    Searches the Ingredients sheet for an ingredient by name (case-insensitive).
+    
+    Returns the Ingredient ID (e.g., 'ING001') if found, otherwise returns None.
+    """
+    search_name = name.strip().lower()
+    logging.info(f"Searching for ingredient by name: '{search_name}'")
+    
+    # 1. Get all ingredient records
+    # P2.4: Use the existing queries function
+    all_ingredients = queries.get_all_records(INGREDIENTS_SHEET)
+    
+    # 2. Search for the specific ingredient by name
+    # We iterate and compare the lowercased name from the sheet
+    current_record = next(
+        (i for i in all_ingredients if i[INGREDIENT_NAME].strip().lower() == search_name),
+        None
+    )
+    
+    if current_record:
+        ingredient_id = current_record[INGREDIENT_ID]
+        logging.info(f"Match found for '{search_name}': ID is {ingredient_id}")
+        return ingredient_id
+    else:
+        logging.warning(f"No match found for ingredient name: '{search_name}'")
+        return None
+
 async def add_new_ingredient(name: str, stock: float, unit: str, cost: float) -> str:
     """
     Creates a new ingredient record in the Ingredients sheet after generating an ID.
