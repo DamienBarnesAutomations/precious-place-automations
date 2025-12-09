@@ -437,12 +437,6 @@ async def adjust_ingredient_quantity(name: str, new_quantity: float, user_id: st
     
     return update_success
     
-I've applied the requested treatment: adding comprehensive logging, proper error handling, and correcting the syntax for the asynchronous call to log_price_history, all while preserving your established core logic for stock management and conditional price updates.
-
-Here is the revised function:
-
-Python
-
 async def process_ingredient_purchase(name: str, quantity: float, unit: str, total_cost: float, user_id: str | int | None = None) -> tuple[bool, str]:
     """
     Handles a purchase: checks if ingredient exists, adjusts stock/price, or adds new ingredient.
