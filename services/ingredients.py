@@ -228,6 +228,7 @@ def _find_ingredient_by_name(name: str) -> dict | None:
     # Iterate through records to find a case-insensitive match
     for record in all_ingredients:
         # Check if the required name column exists in the record
+        logging.info(f"LOOKUP SUCCESS: Found ingredient '{record}'.")
         if INGREDIENT_NAME in record:
             # Clean and lowercase the name from the sheet for comparison
             record_name = record[INGREDIENT_NAME].strip().lower()
