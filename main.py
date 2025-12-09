@@ -7,7 +7,7 @@ from starlette.responses import HTMLResponse
 
 # Import the necessary handler object
 from bot.ingredients_handler import INGREDIENTS_MANAGER_MODE_CONVERSATION_HANDLER
-)
+
 
 # --- Configuration ---
 # Get the token from Render Environment Variables
