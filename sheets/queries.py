@@ -101,7 +101,7 @@ def update_row_by_id(sheet_name: str, id_value: str, updates: dict, use_cron_she
             if header in headers:
                 col_index = headers.index(header) + 1 # Convert 0-based index to 1-based column number
                 
-                cells_to_update.append(gspread.models.Cell(row_num, col_index, str(new_value)))
+                cells_to_update.append(gspread.Cell(row_num, col_index, str(new_value)))
         
         # 4. Batch update
         if cells_to_update:
