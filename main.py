@@ -6,11 +6,7 @@ from telegram.ext import Application, ContextTypes # Note: ContextTypes is still
 from starlette.responses import HTMLResponse
 
 # Import the necessary handler object
-from bot.ingredients_handler import (
-    ADD_INGREDIENT_CONVERSATION_HANDLER,
-    UPDATE_PRICE_CONVERSATION_HANDLER,
-    SHOW_STOCK_CONVERSATION_HANDLER,
-    MANAGER_MODE_CONVERSATION_HANDLER, 
+from bot.ingredients_handler import INGREDIENTS_MANAGER_MODE_CONVERSATION_HANDLER
 )
 
 # --- Configuration ---
@@ -31,10 +27,7 @@ application = (
 )
 
 # 🔑 Register the imported Conversation Handler
-application.add_handler(ADD_INGREDIENT_CONVERSATION_HANDLER)
-application.add_handler(UPDATE_PRICE_CONVERSATION_HANDLER) 
-application.add_handler(SHOW_STOCK_CONVERSATION_HANDLER) 
-application.add_handler(MANAGER_MODE_CONVERSATION_HANDLER) 
+application.add_handler(INGREDIENTS_MANAGER_MODE_CONVERSATION_HANDLER) 
 
 # Global flag to track if the application has been initialized (Fix for UnboundLocalError)
 app_initialized = False
