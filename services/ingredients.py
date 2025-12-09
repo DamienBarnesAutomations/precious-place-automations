@@ -25,6 +25,7 @@ UNITS_To_Unit = 'To_Unit'
 UNITS_Conversion_Rate = 'Conversion_Rate'
 
 #PRICE HISTORY TABLE COLUMNS
+PRICE_HISTORY_INGREDIENT_ID - 'ingredients_Id'
 OLD_COST_PER_UNIT = 'old_cost_per_unit'
 NEW_COST_PER_UNIT = 'new_cost_per_unit'
 
@@ -172,7 +173,7 @@ async def log_price_history(ingredient_id: str, old_cost_per_unit: float, new_co
         # Prepare the data dictionary using the specified column names
         log_data = {
             # Use the ingredient ID passed to the function
-            INGREDIENT_ID: ingredient_id,
+            PRICE_HISTORY_INGREDIENT_ID: ingredient_id,
             # Format the old cost to 4 decimal places for consistency
             OLD_COST_PER_UNIT: f"{old_cost_per_unit:.4f}",
             # Format the new cost to 4 decimal places for consistency
