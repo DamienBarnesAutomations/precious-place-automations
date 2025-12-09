@@ -29,9 +29,9 @@ PRICE_HISTORY_INGREDIENT_ID = 'ingredients_Id'
 OLD_COST_PER_UNIT = 'old_cost_per_unit'
 NEW_COST_PER_UNIT = 'new_cost_per_unit'
 
-def get_conversion_rate(from_unit: str, to_unit: str) -> float | None:
+async def get_conversion_rate(from_unit: str, to_unit: str) -> float | None:
     """
-    Retrieves the conversion rate between two specified units from the Units table.
+    Retrieves the conversion rate between two specified units from the Units table (asynchronously).
     
     If no direct conversion is found, it attempts the reverse conversion.
     
@@ -50,12 +50,14 @@ def get_conversion_rate(from_unit: str, to_unit: str) -> float | None:
 
     # 2. Get all conversion rules from the database (UNITS_SHEET)
     try:
-        conversion_rules = queries.get_all_records(UNITS_SHEET)
+        # Await the asynchronous query function
+        conversion_rules = await queries.get_all_records(UNITS_SHEET) 
     except Exception as e:
         logging.error(f"DATABASE READ FAILED: Could not fetch conversion rules from {UNITS_SHEET}. Exception: {e}")
         return None
 
     # 3. Search for the direct conversion (From -> To)
+    # ... (Rest of your existing logic for finding direct conversion remains the same) ...
     for rule in conversion_rules:
         # Data integrity check: Ensure all required columns exist in the record
         if all(key in rule for key in [UNITS_FROM_UNIT, UNITS_To_Unit, UNITS_Conversion_Rate]):
@@ -74,6 +76,7 @@ def get_conversion_rate(from_unit: str, to_unit: str) -> float | None:
                     continue
 
     # 4. Search for the reverse conversion (To -> From) and calculate the inverse rate
+    # ... (Rest of your existing logic for finding inverse conversion remains the same) ...
     for rule in conversion_rules:
         if all(key in rule for key in [UNITS_FROM_UNIT, UNITS_To_Unit, UNITS_Conversion_Rate]):
             rule_from = rule[UNITS_FROM_UNIT].strip().lower()
@@ -316,43 +319,75 @@ def _find_ingredient_by_name(name: str) -> dict | None:
     return None
 
 
-async def update_ingredient_cost_per_unit(ingredient_name: str, new_price: float, user_id: str | int | None = None) -> bool:
+async def update_ingredient_cost_per_unit(name: str, input_quantity: float, input_unit: str, new_price: float, user_id: str | int | None = None) -> bool:
     """
-    Updates the unit cost of an existing ingredient and logs the price change.
+    Updates the unit cost of an existing ingredient by first converting the input
+    price to the ingredient's stored unit, and then logs the price change.
     
     Returns True on success, False on failure (lookup, write, or data error).
     """
     # Log the start of the price update attempt
-    logging.info(f"START PRICE UPDATE: Attempting to set cost for '{ingredient_name}' to {new_price} €.")
+    logging.info(f"START PRICE UPDATE: Attempting to set cost for '{name}' based on input: {input_quantity} {input_unit} @ {new_price} €.")
     
     # 1. Find the existing ingredient record by name
     try:
         # Calls the internal lookup utility (P3.1.F1 equivalent)
-        ingredient = await _find_ingredient_by_name(ingredient_name)
+        # Note: Assuming _find_ingredient_by_name is now async or await is not needed. Adjust if necessary.
+        ingredient = await _find_ingredient_by_name(name)
     except Exception as e:
         # Catch exception from _find_ingredient_by_name's internal database call
-        logging.error(f"DATABASE READ FAILED: Error during lookup for '{ingredient_name}'. Exception: {e}")
+        logging.error(f"DATABASE READ FAILED: Error during lookup for '{name}'. Exception: {e}")
         return False
 
     if not ingredient:
         # Abort if the ingredient is not found
-        logging.warning(f"PRICE UPDATE ABORTED: Ingredient name '{ingredient_name}' not found in the sheet.")
+        logging.warning(f"PRICE UPDATE ABORTED: Ingredient name '{name}' not found in the sheet.")
         return False
     
-    # Safely retrieve the ingredient ID and old price for logging/comparison
+    # 2. Safely retrieve necessary ingredient data
     try:
         i_id = ingredient[INGREDIENT_ID]
+        # Get the currently stored unit for conversion
+        current_unit = ingredient[INGREDIENT_UNIT] 
         # Attempt to cast old price to float, defaulting to 0.0 if conversion fails
         old_price = float(ingredient.get(INGREDIENT_COST_PER_UNIT, 0.0)) 
     except (ValueError, KeyError, TypeError) as e:
         # Log data integrity issue but proceed with update using 0.0 as the old price
-        logging.error(f"DATA INTEGRITY ERROR: Cannot read old price for ID {i_id}. Defaulting to 0.0. Exception: {e}")
+        logging.error(f"DATA INTEGRITY ERROR: Cannot read ingredient data for ID {i_id}. Exception: {e}")
         old_price = 0.0 
+
+    # --- 3. Calculate the new cost per STORED unit ---
     
-    # 2. Update the 'Ingredients' sheet with the new price
+    # 3a. Handle direct unit match
+    if current_unit.strip().lower() == input_unit.strip().lower():
+        # Cost per stored unit is simple: new_price / input_quantity
+        new_cost_per_stored_unit = new_price / input_quantity
+        logging.info("CONVERSION SKIP: Input unit matches stored unit. Direct calculation used.")
+    else:
+        # 3b. Unit conversion is required
+        try:
+            # Assumes get_conversion_rate exists and returns (Input Unit -> Stored Unit) rate
+            # e.g., get_conversion_rate('kg', 'g') returns 1000
+            rate = await get_conversion_rate(input_unit, current_unit) 
+            if rate is None:
+                logging.error(f"CONVERSION FAILED: No rate found between {input_unit} and {current_unit}. Aborting.")
+                return False
+
+            # Calculate the total cost of the purchased batch in the stored unit
+            total_purchased_units_stored = input_quantity * rate
+            
+            # Calculate the final cost per ONE stored unit
+            new_cost_per_stored_unit = new_price / total_purchased_units_stored
+            logging.info(f"CONVERSION SUCCESS: Rate {rate} applied. New cost per {current_unit}: {new_cost_per_stored_unit:.4f} €.")
+
+        except Exception as e:
+            logging.error(f"FATAL CONVERSION ERROR for ID {i_id}: {e}", exc_info=True)
+            return False
+
+    # 4. Update the 'Ingredients' sheet with the final calculated price
     updates = {
-        # Format float to string for consistent sheet storage
-        INGREDIENT_COST_PER_UNIT: f"{new_price:.4f}" 
+        # Format the calculated cost per stored unit as a string
+        INGREDIENT_COST_PER_UNIT: f"{new_cost_per_stored_unit:.4f}" 
     }
     
     # update_row_by_id handles finding the row by ID and updating Last_Updated metadata
@@ -363,15 +398,15 @@ async def update_ingredient_cost_per_unit(ingredient_name: str, new_price: float
         logging.error(f"DATABASE WRITE FAILED: Could not update ingredient ID {i_id} in {INGREDIENTS_SHEET}. Exception: {e}")
         update_success = False
 
-    # 3. Log the change to the 'Price_History' sheet only if the main update succeeded
+    # 5. Log the change to the 'Price_History' sheet only if the main update succeeded
     if update_success:
         # Log successful update to the main table
-        logging.info(f"INGREDIENT UPDATE SUCCESS: Updated cost for ID {i_id} from {old_price:.4f} € to {new_price:.4f} €.")
+        logging.info(f"INGREDIENT UPDATE SUCCESS: Updated cost for ID {i_id} from {old_price:.4f} € to {new_cost_per_stored_unit:.4f} €.")
         
         # Call the logging function (P3.1.F5)
         try:
-            # FIX: Correctly call the async log_price_history function
-            if await log_price_history(i_id, old_price, new_price, user_id):
+            # FIX: Use the calculated new_cost_per_stored_unit for logging
+            if await log_price_history(i_id, old_price, new_cost_per_stored_unit, user_id): 
                 # Log successful history logging
                 logging.info(f"HISTORY LOG SUCCESS: Price change logged to {PRICE_HISTORY_SHEET}.") 
             else:
@@ -385,7 +420,7 @@ async def update_ingredient_cost_per_unit(ingredient_name: str, new_price: float
         logging.error(f"PRICE UPDATE FAILED: Main database update failed for ID {i_id}.")
     
     # Log the completion and return the success status
-    logging.info(f"END PRICE UPDATE: Completed for '{ingredient_name}'. Success: {update_success}")
+    logging.info(f"END PRICE UPDATE: Completed for '{name}'. Success: {update_success}")
     return update_success
     
     
