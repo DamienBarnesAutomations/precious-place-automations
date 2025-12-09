@@ -25,8 +25,8 @@ UNITS_To_Unit = 'To_Unit'
 UNITS_Conversion_Rate = 'Conversion_Rate'
 
 #PRICE HISTORY TABLE COLUMNS
-OLD_COST_PER_UNIT = 'Old Cost Per Unit"
-NEW_COST_PER_UNIT = 'NEw Cost Per Unit"
+OLD_COST_PER_UNIT = 'old_cost_per_unit'
+NEW_COST_PER_UNIT = 'new_cost_per_unit'
 
 def get_conversion_rate(from_unit: str, to_unit: str) -> float | None:
     """

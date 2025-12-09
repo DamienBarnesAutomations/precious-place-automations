@@ -243,15 +243,14 @@ async def dispatch_nlp_action(update: Update, context: ContextTypes.DEFAULT_TYPE
         # 5. No match found
         else:
             reply = (
-                "🧐 <b>Unrecognized Action.</b> Please use one of the following formats:\n"
-                "<ul>"
-                "<li><code>Bought 1 kg Flour for 5</code> (Handles purchase/stock update)</li>"
-                "<li><code>Set Flour stock to 5 kg</code> (Direct replacement)</li>"
-                "<li><code>Update Flour unit cost to 5.95</code></li>"
-                "<li><code>Check stock for Flour</code></li>"
-                "</ul>"
-                "Type <code>STOP</code> to exit Manager Mode."
-            )
+    "🧐 <b>Unrecognized Action.</b> Please use one of the following formats:\n\n"
+    "<b>Available Commands:</b>\n"
+    "• Purchase/Stock Update: <code>Bought 1 kg Flour for 5</code>\n"
+    "• Stock Replacement: <code>Set Flour stock to 5 kg</code>\n"
+    "• Price Update: <code>Update Flour unit cost to 5.95</code>\n"
+    "• Stock Check: <code>Check stock for Flour</code>\n\n"
+    "Type <code>STOP</code> to exit Manager Mode."
+)
 
     except Exception as e:
         # Catch unexpected errors during regex matching or dispatch
