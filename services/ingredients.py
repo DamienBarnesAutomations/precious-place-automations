@@ -365,19 +365,24 @@ async def adjust_ingredient_quantity(name: str, new_quantity: float) -> bool:
     return update_success
     
 async def process_ingredient_purchase(name: str, quantity: float, unit: str, total_cost: float) -> tuple[bool, str]:
-    """Handles a purchase: checks if ingredient exists, adjusts stock/price, or adds new ingredient."""
-
+    """
+    Handles a purchase: checks if ingredient exists, adjusts stock/price, or adds new ingredient.
+    
+    Returns a tuple: (success_bool, status_message).
+    """
+    
     # Log the start of the transaction for monitoring
     logging.info(f"START PURCHASE: Processing purchase for: {name} | Qty: {quantity} {unit} | Cost: {total_cost} €")
 
-    # Attempt to find the ingredient record by its name (P3.1.R3)
+    # 1. Attempt to find the ingredient record by its name
     try:
         existing_record = _find_ingredient_by_name(name)
     except Exception as e:
         logging.error(f"DATABASE ERROR: Failed to lookup ingredient '{name}'. Exception: {e}")
         return False, "Failed to look up ingredient in the database."
     
-    # Calculate the unit cost of the purchased batch (Total Cost / Purchased Quantity)
+    # Calculate the unit cost of the purchased batch
+    # This value is used for both new ingredient creation and price comparison.
     new_unit_cost_batch = total_cost / quantity
 
     if existing_record:
@@ -398,11 +403,11 @@ async def process_ingredient_purchase(name: str, quantity: float, unit: str, tot
         updates = {}
         new_price_set = False
         
-        # Check for unit mismatch to determine if conversion is needed
+        # 1a. Check for unit mismatch and perform conversion if needed
         if current_unit.strip().lower() != unit.strip().lower():
             logging.info(f"UNIT MISMATCH: Stored unit '{current_unit}' requires conversion from purchased unit '{unit}'.")
             
-            # Query the conversion service for the required rate
+            # Query the conversion rate using the service
             try:
                 rate = get_conversion_rate(unit, current_unit)
             except Exception as e:
@@ -420,9 +425,9 @@ async def process_ingredient_purchase(name: str, quantity: float, unit: str, tot
              logging.info("UNIT MATCH: Units are identical. No conversion needed.")
 
         # --- Stock Update ---
-        # Update the total stock quantity
+        # Update the total stock quantity by adding the converted purchased quantity
         new_quantity = current_quantity + converted_quantity
-        # FIX: Format float to string for consistent sheet storage
+        # Format as string for consistent sheet storage
         updates[INGREDIENT_Quantity] = f"{new_quantity:.4f}" 
         
         # --- Price Update Logic (Conditional) ---
@@ -432,7 +437,7 @@ async def process_ingredient_purchase(name: str, quantity: float, unit: str, tot
         # Only update the price if the new batch is more expensive than the current stored cost
         if new_unit_cost_per_unit > current_unit_cost:
             new_price_set = True
-            # FIX: Format float to string for consistent sheet storage
+            # Format as string for consistent sheet storage
             updates[INGREDIENT_COST_PER_UNIT] = f"{new_unit_cost_per_unit:.4f}"
             logging.info(f"PRICE SET: New batch is MORE EXPENSIVE. Updating Unit Cost.")
         else:
@@ -458,5 +463,20 @@ async def process_ingredient_purchase(name: str, quantity: float, unit: str, tot
         # --- New Ingredient Flow ---
         logging.info(f"NEW INGREDIENT: Ingredient '{name}' not found. Initiating addition.")
         
-        # Calculate unit cost for the new ingredient entry
-        initial_unit_cost = total_cost / quantity
+        # The unit cost of the purchased batch is the initial unit cost
+        initial_unit_cost = new_unit_cost_batch
+        
+        # Add the new ingredient record (P3.1.4 implementation)
+        try:
+            ingredient_id = await add_new_ingredient(name, quantity, unit, initial_unit_cost)
+        except Exception as e:
+            logging.error(f"ADD NEW INGREDIENT FAILED: Could not execute add_new_ingredient for '{name}'. Exception: {e}")
+            return False, "Error occurred while attempting to add new ingredient."
+        
+        if ingredient_id and ingredient_id != "ERROR_SAVE_FAILED":
+            logging.info(f"END PURCHASE: New ingredient added successfully with ID: {ingredient_id}")
+            return True, f"NEW_INGREDIENT_ADDED:{ingredient_id}"
+        else:
+            # Handle the specific save failure status
+            logging.error(f"DATABASE WRITE FAILED: add_new_ingredient returned failure for '{name}'.")
+            return False, f"Failed to add new ingredient '{name}'."
