@@ -25,7 +25,7 @@ UNITS_To_Unit = 'To_Unit'
 UNITS_Conversion_Rate = 'Conversion_Rate'
 
 #PRICE HISTORY TABLE COLUMNS
-PRICE_HISTORY_INGREDIENT_ID - 'ingredients_Id'
+PRICE_HISTORY_INGREDIENT_ID = 'ingredients_Id'
 OLD_COST_PER_UNIT = 'old_cost_per_unit'
 NEW_COST_PER_UNIT = 'new_cost_per_unit'
 
@@ -577,3 +577,59 @@ async def process_ingredient_purchase(name: str, quantity: float, unit: str, tot
             # Handle the specific save failure status returned by add_new_ingredient
             logging.error(f"DATABASE WRITE FAILED: add_new_ingredient returned failure for '{name}'.")
             return False, f"Failed to add new ingredient '{name}'."
+
+async def revert_last_transaction(user_id: str | int) -> tuple[bool, str]:
+    """
+    Finds the last transaction logged by the user in Price_History and reverts its effect
+    on the Ingredients sheet, if possible.
+    
+    Returns (success_bool, status_message).
+    """
+    str_user_id = str(user_id)
+    logging.info(f"START ROLLBACK: Attempting to revert last transaction for User: {str_user_id}")
+    
+    # 1. Find the last relevant transaction logged by this user
+    try:
+        # P3.1.F4 ensures User_ID is logged in Price_History
+        # We need a query that sorts by Timestamp (descending) and filters by User_ID
+        all_logs = queries.get_all_records(PRICE_HISTORY_SHEET)
+        
+        # Filter by User_ID and find the first record (which is the newest by Timestamp column)
+        last_log = next(
+            (log for log in all_logs if log.get('User_ID') == str_user_id), 
+            None
+        )
+        
+    except Exception as e:
+        logging.error(f"DATABASE READ FAILED: Could not read Price_History for rollback. Exception: {e}")
+        return False, "Database error reading history log."
+
+    if not last_log:
+        logging.warning(f"ROLLBACK ABORTED: No recent transaction found for User: {str_user_id}.")
+        return False, "No transactions found in your history to delete."
+
+    i_id = last_log.get(INGREDIENT_ID)
+    
+    # Check if the log is a Stock Adjustment (which impacts the master table)
+    # NOTE: Since we don't have an Event_Type, we assume any log implies a purchase/change.
+    # We must retrieve the old cost recorded in the log.
+    try:
+        logged_old_cost = float(last_log.get(OLD_COST_PER_UNIT, 0.0))
+        logged_new_cost = float(last_log.get(NEW_COST_PER_UNIT, 0.0))
+        
+        # We need a way to link the history log to the stock change. 
+        # For a simple 'Bought' command, one Price_History log corresponds to one stock change.
+        # This implementation requires reading the *entire* Ingredients table to find the current stock
+        # and reverse the quantity based on the difference we originally calculated in P3.1.F2.
+        
+        # --- CRITICAL MISSING DATA ---
+        # The Price_History table currently ONLY logs cost changes, not the quantity added/subtracted.
+        # To accurately revert stock, we need the: (Quantity_Change, Unit_of_Measure_Purchased)
+        # We must update P3.1.F5's log_price_history function *first* to include this data!
+        
+        logging.critical("ROLLBACK FAILED: Price_History log does not contain QUANTITY CHANGE data required for accurate stock reversal.")
+        return False, "System Error: History log is incomplete. Cannot revert stock quantity."
+
+    except (ValueError, KeyError) as e:
+        logging.error(f"DATA INTEGRITY ERROR: Corrupted log entry ID {last_log.get('Transaction_ID')}. Exception: {e}")
+        return False, "History log entry is corrupted. Cannot revert."
