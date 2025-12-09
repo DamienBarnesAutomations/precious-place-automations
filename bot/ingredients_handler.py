@@ -98,7 +98,7 @@ async def exit_manager_mode(update: Update, context: ContextTypes.DEFAULT_TYPE) 
         return ConversationHandler.END
     
     
-async def _handle_purchase_action(update: Update, data: dict) -> str:
+async def _handle_purchase_action(update: Update, data: dict, user_id: str | int | None = None) -> str:
     """Handles the BUY/ADD pattern using the process_ingredient_purchase service."""
     name = data['name'].strip()
     
@@ -114,7 +114,7 @@ async def _handle_purchase_action(update: Update, data: dict) -> str:
 
     # Use the robust service function which handles existing/new ingredient logic
     success, status_message = await ingredients.process_ingredient_purchase(
-        name, quantity, unit, total_cost
+        name, quantity, unit, total_cost, user_id
     )
 
     if success:
@@ -217,6 +217,7 @@ async def dispatch_nlp_action(update: Update, context: ContextTypes.DEFAULT_TYPE
     """
     text = update.message.text.strip()
     user_id = update.effective_user.id
+    text = update.message.text.strip()
     reply = ""
 
     logging.debug(f"USER {user_id} - DISPATCH: Received message '{text}'")
@@ -224,7 +225,7 @@ async def dispatch_nlp_action(update: Update, context: ContextTypes.DEFAULT_TYPE
     try:
         # 1. Try to match the BUY/ADD pattern (handles new/existing purchase logic via service)
         if match := BUY_REGEX.match(text):
-            reply = await _handle_purchase_action(update, match.groupdict())
+            reply = await _handle_purchase_action(update, match.groupdict(), user_id)
 
         # 2. Try to match the ADJUST pattern (direct stock replacement)
         elif match := ADJUST_REGEX.match(text):

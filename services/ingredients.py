@@ -10,6 +10,7 @@ PRICE_HISTORY_SHEET = "Price_History"
 UNITS_SHEET = "Units"
 CONFIG_SHEET = "Config"
 NEXT_ING_ID_KEY = "NEXT_ING_ID"
+PRICE_HISTORY_SHEET = "Price_History"
 
 #INGREDIENTS TABLE COLUMNS
 INGREDIENT_ID = 'ID'
@@ -23,6 +24,9 @@ UNITS_FROM_UNIT = 'From_Unit'
 UNITS_To_Unit = 'To_Unit'
 UNITS_Conversion_Rate = 'Conversion_Rate'
 
+#PRICE HISTORY TABLE COLUMNS
+OLD_COST_PER_UNIT = 'Old Cost Per Unit"
+NEW_COST_PER_UNIT = 'NEw Cost Per Unit"
 
 def get_conversion_rate(from_unit: str, to_unit: str) -> float | None:
     """
@@ -160,6 +164,39 @@ def _generate_and_commit_new_id(key_prefix: str, config_key: str) -> str:
 
 # --- Core Service Functions ---
 
+async def log_price_history(ingredient_id: str, old_cost_per_unit: float, new_cost_per_unit: float, user_id: str | int | None = None) -> bool:
+    # Log the start of the history logging operation
+    logging.info(f"START LOGGING: Price history for ID: {ingredient_id}. Old: {old_cost_per_unit:.4f}, New: {new_cost_per_unit:.4f}")
+
+    try:
+        # Prepare the data dictionary using the specified column names
+        log_data = {
+            # Use the ingredient ID passed to the function
+            INGREDIENT_ID: ingredient_id,
+            # Format the old cost to 4 decimal places for consistency
+            OLD_COST_PER_UNIT: f"{old_cost_per_unit:.4f}",
+            # Format the new cost to 4 decimal places for consistency
+            NEW_COST_PER_UNIT: f"{new_cost_per_unit:.4f}",
+        }
+        
+        # Append the row to the Price_History sheet. 
+        # queries.append_row automatically injects Timestamp and User_ID.
+        success = queries.append_row(PRICE_HISTORY_SHEET, log_data, user_id=user_id)
+
+        if success:
+            # Log successful completion
+            logging.info(f"SUCCESS LOGGING: Price history appended for ID: {ingredient_id}.")
+            return True
+        else:
+            # Log failure if the lower-level append_row function returns False
+            logging.error(f"DATABASE WRITE FAILED: queries.append_row returned False for ID: {ingredient_id}.")
+            return False
+
+    except Exception as e:
+        # Catch any other unexpected exceptions (e.g., network issues, data formatting)
+        logging.error(f"UNEXPECTED ERROR: Failed to log price history for ID {ingredient_id}.", exc_info=True)
+        return False
+
 async def get_ingredient_id_by_name(name: str) -> str | None:
     """
     Searches the Ingredients sheet for an ingredient by name (case-insensitive).
@@ -188,7 +225,7 @@ async def get_ingredient_id_by_name(name: str) -> str | None:
         logging.warning(f"No match found for ingredient name: '{search_name}'")
         return None
 
-async def add_new_ingredient(name: str, stock: float, unit: str, cost: float) -> str:
+async def add_new_ingredient(name: str, stock: float, unit: str, cost: float, user_id: str | int | None = None) -> str:
     """
     Creates a new ingredient record in the Ingredients sheet after generating an ID.
     
@@ -216,7 +253,7 @@ async def add_new_ingredient(name: str, stock: float, unit: str, cost: float) ->
             INGREDIENT_Quantity: f"{stock:.4f}", # Format floats for consistent sheet storage
             INGREDIENT_UNIT: unit,
             INGREDIENT_COST_PER_UNIT: f"{cost:.4f}", # Use the calculated unit cost
-            "Last_Updated": datetime.now().strftime("%Y-%m-%d %H:%M:%S") 
+            
         }
         logging.debug(f"Prepared data for new ingredient {new_id}: {new_ingredient_data}")
         
@@ -227,7 +264,7 @@ async def add_new_ingredient(name: str, stock: float, unit: str, cost: float) ->
 
     # 3. Append the data to the Ingredients sheet (P2.6)
     try:
-        if queries.append_row(INGREDIENTS_SHEET, new_ingredient_data):
+        if queries.append_row(INGREDIENTS_SHEET, new_ingredient_data, user_id):
             logging.info(f"END ADD: Successfully added new ingredient with ID: {new_id}.")
             return new_id
         else:
@@ -278,79 +315,81 @@ def _find_ingredient_by_name(name: str) -> dict | None:
     return None
 
 
-async def update_ingredient_cost_per_unit(ingredient_name: str, new_price: float) -> bool:
+async def update_ingredient_cost_per_unit(ingredient_name: str, new_price: float, user_id: str | int | None = None) -> bool:
     """
     Updates the unit cost of an existing ingredient and logs the price change.
     
     Returns True on success, False on failure (lookup, write, or data error).
     """
+    # Log the start of the price update attempt
     logging.info(f"START PRICE UPDATE: Attempting to set cost for '{ingredient_name}' to {new_price} €.")
     
     # 1. Find the existing ingredient record by name
     try:
-        ingredient = _find_ingredient_by_name(ingredient_name)
+        # Calls the internal lookup utility (P3.1.F1 equivalent)
+        ingredient = await _find_ingredient_by_name(ingredient_name)
     except Exception as e:
         # Catch exception from _find_ingredient_by_name's internal database call
         logging.error(f"DATABASE READ FAILED: Error during lookup for '{ingredient_name}'. Exception: {e}")
         return False
 
     if not ingredient:
+        # Abort if the ingredient is not found
         logging.warning(f"PRICE UPDATE ABORTED: Ingredient name '{ingredient_name}' not found in the sheet.")
         return False
     
-    # Safely retrieve the old price for logging purposes
+    # Safely retrieve the ingredient ID and old price for logging/comparison
     try:
         i_id = ingredient[INGREDIENT_ID]
-        # Attempt to cast old price to float, defaulting to 0.0 if conversion fails (data integrity check)
+        # Attempt to cast old price to float, defaulting to 0.0 if conversion fails
         old_price = float(ingredient.get(INGREDIENT_COST_PER_UNIT, 0.0)) 
     except (ValueError, KeyError, TypeError) as e:
+        # Log data integrity issue but proceed with update using 0.0 as the old price
         logging.error(f"DATA INTEGRITY ERROR: Cannot read old price for ID {i_id}. Defaulting to 0.0. Exception: {e}")
-        old_price = 0.0 # Proceed with update, but log the issue
+        old_price = 0.0 
     
     # 2. Update the 'Ingredients' sheet with the new price
     updates = {
-        # FIX: Format float to string for consistent sheet storage
+        # Format float to string for consistent sheet storage
         INGREDIENT_COST_PER_UNIT: f"{new_price:.4f}" 
     }
     
-    # P2.5: update_row_by_id handles finding the row by ID and updating Last_Updated
+    # update_row_by_id handles finding the row by ID and updating Last_Updated metadata
     try:
-        update_success = queries.update_row_by_id(INGREDIENTS_SHEET, i_id, updates)
+        update_success = queries.update_row_by_id(INGREDIENTS_SHEET, i_id, updates, user_id=user_id)
     except Exception as e:
+        # Log a critical failure during the main database write
         logging.error(f"DATABASE WRITE FAILED: Could not update ingredient ID {i_id} in {INGREDIENTS_SHEET}. Exception: {e}")
         update_success = False
 
     # 3. Log the change to the 'Price_History' sheet only if the main update succeeded
     if update_success:
-        logging.info(f"INGREDIENT UPDATE SUCCESS: Updated cost for ID {i_id} from {old_price:.2f} € to {new_price:.2f} €.")
+        # Log successful update to the main table
+        logging.info(f"INGREDIENT UPDATE SUCCESS: Updated cost for ID {i_id} from {old_price:.4f} € to {new_price:.4f} €.")
         
-        price_history_log = {
-            INGREDIENT_ID: i_id,
-            "Timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-            "Old_Price": f"{old_price:.4f}",  # Format for consistent storage
-            "New_Price": f"{new_price:.4f}"
-        }
-        
-        # P2.6: Use append_row to add the log record
+        # Call the logging function (P3.1.F5)
         try:
-            if queries.append_row(PRICE_HISTORY_SHEET, price_history_log):
-                # FIX: Used PRICE_HISTORY_SHEET constant in success message
+            # FIX: Correctly call the async log_price_history function
+            if await log_price_history(i_id, old_price, new_price, user_id):
+                # Log successful history logging
                 logging.info(f"HISTORY LOG SUCCESS: Price change logged to {PRICE_HISTORY_SHEET}.") 
             else:
-                # FIX: Used PRICE_HISTORY_SHEET constant in failure warning
-                logging.warning(f"HISTORY LOG FAILED: Failed to log price change for ID {i_id} to {PRICE_HISTORY_SHEET} (append_row returned False).")
+                # Log failure if the logging service function returns False
+                logging.warning(f"HISTORY LOG FAILED: Failed to log price change for ID {i_id} to {PRICE_HISTORY_SHEET} (log function returned False).")
         except Exception as e:
-             # Log an error if the append API call throws an exception
-             logging.error(f"HISTORY LOG EXCEPTION: Failed to log price change for ID {i_id}. Exception: {e}")
+            # Log an error if the logging API call throws an exception
+            logging.error(f"HISTORY LOG EXCEPTION: Failed to log price change for ID {i_id}. Exception: {e}")
     else:
+        # Log final failure if the main update failed
         logging.error(f"PRICE UPDATE FAILED: Main database update failed for ID {i_id}.")
     
+    # Log the completion and return the success status
     logging.info(f"END PRICE UPDATE: Completed for '{ingredient_name}'. Success: {update_success}")
     return update_success
     
     
         
-async def adjust_ingredient_quantity(name: str, new_quantity: float) -> bool:
+async def adjust_ingredient_quantity(name: str, new_quantity: float, user_id: str | int | None = None) -> bool:
     """
     Updates the stock quantity of an existing ingredient by replacing the current value.
     
@@ -398,26 +437,38 @@ async def adjust_ingredient_quantity(name: str, new_quantity: float) -> bool:
     
     return update_success
     
-async def process_ingredient_purchase(name: str, quantity: float, unit: str, total_cost: float) -> tuple[bool, str]:
+I've applied the requested treatment: adding comprehensive logging, proper error handling, and correcting the syntax for the asynchronous call to log_price_history, all while preserving your established core logic for stock management and conditional price updates.
+
+Here is the revised function:
+
+Python
+
+async def process_ingredient_purchase(name: str, quantity: float, unit: str, total_cost: float, user_id: str | int | None = None) -> tuple[bool, str]:
     """
     Handles a purchase: checks if ingredient exists, adjusts stock/price, or adds new ingredient.
     
     Returns a tuple: (success_bool, status_message).
     """
-    
-    # Log the start of the transaction for monitoring
-    logging.info(f"START PURCHASE: Processing purchase for: {name} | Qty: {quantity} {unit} | Cost: {total_cost} €")
+    # Log the start of the transaction for monitoring, including the user ID
+    logging.info(f"START PURCHASE (User: {user_id}): Processing purchase for: {name} | Qty: {quantity} {unit} | Cost: {total_cost} €")
 
     # 1. Attempt to find the ingredient record by its name
     try:
+        # Use internal lookup function (assumed to be synchronous)
         existing_record = _find_ingredient_by_name(name)
     except Exception as e:
-        logging.error(f"DATABASE ERROR: Failed to lookup ingredient '{name}'. Exception: {e}")
+        # Log critical database error during lookup
+        logging.error(f"DATABASE ERROR: Failed to lookup ingredient '{name}'. Exception: {e}", exc_info=True)
         return False, "Failed to look up ingredient in the database."
     
     # Calculate the unit cost of the purchased batch
     # This value is used for both new ingredient creation and price comparison.
-    new_unit_cost_batch = total_cost / quantity
+    try:
+        new_unit_cost_batch = total_cost / quantity
+    except ZeroDivisionError:
+        # Handle case where quantity is zero (cannot calculate unit cost)
+        logging.error(f"DATA ERROR: Purchase quantity for '{name}' is zero. Cannot process.")
+        return False, "Data error: Purchase quantity must be greater than zero."
 
     if existing_record:
         # --- Existing Ingredient Flow ---
@@ -430,6 +481,7 @@ async def process_ingredient_purchase(name: str, quantity: float, unit: str, tot
             current_quantity = float(existing_record[INGREDIENT_Quantity])
             current_unit = existing_record[INGREDIENT_UNIT]
         except (ValueError, KeyError) as e:
+            # Log data integrity issue if required fields are missing or corrupted
             logging.error(f"DATA INTEGRITY ERROR: Corrupted stock or schema for {name}. Exception: {e}")
             return False, "Database error: Stock or cost for this ingredient is invalid."
         
@@ -443,23 +495,26 @@ async def process_ingredient_purchase(name: str, quantity: float, unit: str, tot
             
             # Query the conversion rate using the service
             try:
-                rate = get_conversion_rate(unit, current_unit)
+                # Assuming get_conversion_rate is an async function
+                rate = await get_conversion_rate(unit, current_unit) 
             except Exception as e:
-                 logging.error(f"CONVERSION SERVICE ERROR: Failed to query units table. Exception: {e}")
-                 return False, "Error occurred while looking up conversion rate."
+                # Log error if conversion service fails
+                logging.error(f"CONVERSION SERVICE ERROR: Failed to query units table. Exception: {e}")
+                return False, "Error occurred while looking up conversion rate."
 
             if rate is None:
+                # Log error if conversion rate is not found
                 logging.error(f"CONVERSION FAILED: No conversion rate found between {unit} and {current_unit}.")
                 return False, f"Unit conversion failed: No rate found between {unit} and {current_unit}."
-            
+                
             # Convert the purchased quantity to the stored inventory unit
             converted_quantity = quantity * rate
             logging.info(f"CONVERSION SUCCESS: Converted Qty: {converted_quantity:.4f} {current_unit}.")
         else:
-             logging.info("UNIT MATCH: Units are identical. No conversion needed.")
+            logging.info("UNIT MATCH: Units are identical. No conversion needed.")
 
         # --- Stock Update ---
-        # Update the total stock quantity by adding the converted purchased quantity
+        # Calculate the new total stock quantity
         new_quantity = current_quantity + converted_quantity
         # Format as string for consistent sheet storage
         updates[INGREDIENT_Quantity] = f"{new_quantity:.4f}" 
@@ -473,19 +528,30 @@ async def process_ingredient_purchase(name: str, quantity: float, unit: str, tot
             new_price_set = True
             # Format as string for consistent sheet storage
             updates[INGREDIENT_COST_PER_UNIT] = f"{new_unit_cost_per_unit:.4f}"
-            logging.info(f"PRICE SET: New batch is MORE EXPENSIVE. Updating Unit Cost.")
+            
+            # Log the price history before the main update (to capture the intent)
+            try:
+                # FIX: Correctly call the async log_price_history function
+                await log_price_history(ingredient_id, current_unit_cost, new_unit_cost_per_unit, user_id)
+            except Exception as e:
+                # Log error but do not fail the main transaction
+                logging.error(f"HISTORY LOG EXCEPTION: Failed to log price change for ID {ingredient_id} prior to update. Exception: {e}")
+                
+            logging.info(f"PRICE SET: New batch ({new_unit_cost_per_unit:.4f} €) is MORE EXPENSIVE than old ({current_unit_cost:.4f} €). Updating Unit Cost.")
         else:
-            logging.info("PRICE KEPT: New batch is cheaper or equal. Unit Cost remains unchanged.")
+            logging.info(f"PRICE KEPT: New batch ({new_unit_cost_per_unit:.4f} €) is cheaper or equal. Unit Cost remains unchanged at {current_unit_cost:.4f} €.")
             
         # --- Database Update ---
-        # Commit all stock and price changes to the database
+        # Commit all stock and (if applicable) price changes to the main Ingredients sheet
         try:
-            update_success = queries.update_row_by_id(INGREDIENTS_SHEET, ingredient_id, updates)
+            update_success = queries.update_row_by_id(INGREDIENTS_SHEET, ingredient_id, updates, user_id)
         except Exception as e:
+            # Log critical failure on the main database write
             logging.error(f"DATABASE UPDATE FAILED: Could not update ingredient ID {ingredient_id}. Exception: {e}")
             return False, "Failed to save updates to the ingredient record."
 
         if not update_success:
+            # Log failure if the lower-level query function returns False
             logging.error(f"DATABASE WRITE FAILED: Update function returned failure for ID {ingredient_id}.")
             return False, f"Failed to save updates to ingredient '{name}'."
             
@@ -502,15 +568,17 @@ async def process_ingredient_purchase(name: str, quantity: float, unit: str, tot
         
         # Add the new ingredient record (P3.1.4 implementation)
         try:
-            ingredient_id = await add_new_ingredient(name, quantity, unit, initial_unit_cost)
+            # Pass user_id to ensure proper logging in add_new_ingredient
+            ingredient_id = await add_new_ingredient(name, quantity, unit, initial_unit_cost, user_id)
         except Exception as e:
-            logging.error(f"ADD NEW INGREDIENT FAILED: Could not execute add_new_ingredient for '{name}'. Exception: {e}")
+            # Log critical failure on the new ingredient addition
+            logging.error(f"ADD NEW INGREDIENT FAILED: Could not execute add_new_ingredient for '{name}'. Exception: {e}", exc_info=True)
             return False, "Error occurred while attempting to add new ingredient."
         
         if ingredient_id and ingredient_id != "ERROR_SAVE_FAILED":
             logging.info(f"END PURCHASE: New ingredient added successfully with ID: {ingredient_id}")
             return True, f"NEW_INGREDIENT_ADDED:{ingredient_id}"
         else:
-            # Handle the specific save failure status
+            # Handle the specific save failure status returned by add_new_ingredient
             logging.error(f"DATABASE WRITE FAILED: add_new_ingredient returned failure for '{name}'.")
             return False, f"Failed to add new ingredient '{name}'."

@@ -80,79 +80,105 @@ def _find_row_index_by_id(sheet: gspread.Worksheet, id_value: str) -> int:
         raise ValueError(f"ID '{id_value}' not found in sheet.")
 
 
-def update_row_by_id(sheet_name: str, id_value: str, updates: dict, use_cron_sheet: bool = False) -> bool:
+def update_row_by_id(sheet_name: str, row_id: str, data: dict, user_id: str | int | None = None, use_cron_sheet: bool = False) -> bool:
     """
-    Updates specific columns in a row identified by ID, including the Last_Updated timestamp.
+    Updates the specified row (found by ID) with the new data dictionary,
+    automatically updating the Timestamp and User_ID fields.
+    
+    The 'data' dictionary maps column headers to new values.
     """
+    logging.info(f"Attempting to update row ID {row_id} in sheet: {sheet_name} (User: {user_id})")
+    
+    # 1. Prepare data with metadata
+    data_with_metadata = data.copy()
+    data_with_metadata['Last_Updated'] = datetime.now().isoformat() # Use a standard 'Last_Updated' field for edits
+    data_with_metadata['Updated_By_User'] = str(user_id) if user_id is not None else 'SYSTEM' # Use a different field name for edits
+
     sheet = get_worksheet(sheet_name, use_cron_sheet)
     
     try:
-        # 1. Find the row number
-        row_num = _find_row_index_by_id(sheet, id_value)
+        # 2. Get all records to find the row index (inefficient but necessary with gspread)
+        # Assumes the first column is the ID column
+        all_ids = sheet.col_values(1)
         
-        # 2. Get all column headers
+        # Find the row number (1-based index)
+        # Note: all_ids[0] is the header, so the first data row is at index 1
+        row_num = next((i for i, id_val in enumerate(all_ids) if id_val == row_id), -1)
+        
+        if row_num == -1:
+            logging.warning(f"Update failed: Row with ID {row_id} not found in sheet {sheet_name}.")
+            return False
+            
+        row_num += 1 # Convert 0-based index to 1-based row number
+        
+        # 3. Get the column headers
         headers = sheet.row_values(1)
         
-        # 3. Prepare updates, ensuring Last_Updated is included
-        updates['Last_Updated'] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-
-        cells_to_update = []
-        for header, new_value in updates.items():
-            if header in headers:
+        updates_list = []
+        for header, value in data_with_metadata.items():
+            try:
                 col_index = headers.index(header) + 1 # Convert 0-based index to 1-based column number
-                
-                cells_to_update.append(gspread.Cell(row_num, col_index, str(new_value)))
+                updates_list.append({
+                    'range': f"{gspread.utils.rowcol_to_a1(row_num, col_index)}",
+                    'values': [[str(value)]]
+                })
+            except ValueError:
+                # Header not found in sheet, ignore this field
+                pass
         
-        # 4. Batch update
-        if cells_to_update:
-            sheet.update_cells(cells_to_update)
+        # 4. Perform batch update
+        if updates_list:
+            sheet.batch_update(updates_list)
+            logging.info(f"Successfully updated row ID {row_id} in sheet: {sheet_name}")
             return True
-        return False
-        
-    except ValueError as e:
-        # Re-raise the error if the ID was not found
-        raise e
+        else:
+            logging.warning(f"Update skipped for ID {row_id}: No valid fields provided after metadata injection.")
+            return False
+
     except Exception as e:
-        print(f"Error during sheet update for {id_value}: {e}")
-        return False   
+        logging.error(f"FATAL Error during sheet update for ID {row_id} in {sheet_name}.", exc_info=True)
+        return False  
 
 
 # sheets/queries.py (Add this function)
 
-def append_row(sheet_name: str, data: dict, use_cron_sheet: bool = False) -> bool:
+def append_row(sheet_name: str, data: dict, user_id: str | int | None = None, use_cron_sheet: bool = False) -> bool:
     """
-    Appends a new row to the specified sheet.
+    Appends a new row to the specified sheet, automatically adding Timestamp and User_ID.
     
     The 'data' dictionary must map column headers to values.
-    The values are inserted in the exact order of the sheet's column headers.
     """
-    logging.info(f"Attempting to append new row to sheet: {sheet_name} (Cron Sheet: {use_cron_sheet})")
+    logging.info(f"Attempting to append new row to sheet: {sheet_name} (User: {user_id})")
+    
+    # 1. Prepare data with metadata
+    data_with_metadata = data.copy()
+    data_with_metadata['Last_Updated'] = datetime.now().isoformat()
+    data_with_metadata['Updated_By_User'] = str(user_id) if user_id is not None else 'SYSTEM'
+    
+    sheet = get_worksheet(sheet_name, use_cron_sheet)
     
     try:
-        sheet = get_worksheet(sheet_name, use_cron_sheet)
-        
-        # 1. Get the column headers from the first row
+        # 2. Get the column headers from the first row
         headers = sheet.row_values(1)
         
-        # 2. Build the list of values in the correct column order
+        # 3. Build the list of values in the correct column order
         row_values = []
         for header in headers:
             # Retrieve the value from the input data, default to an empty string if key is missing
-            value = data.get(header, "")
+            value = data_with_metadata.get(header, "")
             
             # Append the string representation of the value
             row_values.append(str(value))
         
         logging.debug(f"Row prepared for append (Sheet: {sheet_name}): {row_values}")
         
-        # 3. Append the row to the sheet
+        # 4. Append the row to the sheet
         sheet.append_row(row_values)
         
         logging.info(f"Successfully appended row to sheet: {sheet_name}")
         return True
     
     except Exception as e:
-        # Use logging.error for exceptions, providing the traceback information
         logging.error(f"FATAL Error during sheet append to {sheet_name}.", exc_info=True)
         logging.error(f"Failed to append row. Data intended for sheet: {data}. Error: {e}")
         return False
