@@ -39,12 +39,13 @@ async def enter_manager_mode(update: Update, context: ContextTypes.DEFAULT_TYPE)
     """
     context.user_data['mode'] = 'INGREDIENT_MANAGER'
     await update.message.reply_text(
-        "📝 **Ingredient Manager Mode**\n\n"
-        "I'm now ready to accept natural language commands.\n"
-        "Try sending: `Bought 1 kg Flour for 5` or `Update Flour unit cost to 5`.\n"
-        "Type `STOP` to exit this mode.",
-        parse_mode="Markdown"
-    )
+    "📝 <b>Ingredients Manager Mode</b>\n\n"
+    "<b>Features:</b>\n"
+    "• Purchases: <code>\"Bought 1 kg Flour for 5\"</code>\n"
+    
+    "Type <code>STOP</code> to exit this mode.",
+    parse_mode="HTML" 
+)
     # Move to the special state where we listen for NLP commands
     return INGREDIENT_MANAGER_MODE
 
@@ -144,15 +145,17 @@ async def dispatch_nlp_action(update: Update, context: ContextTypes.DEFAULT_TYPE
     # 5. No match found
     else:
         reply = (
-            "🧐 **Unrecognized Action.** Please use one of the following formats:\n"
-            "* `Bought 1 kg Flour for 5` (Adds new ingredient)\n"
-            "* `Increase ING001 quantity by 500 g`\n"
-            "* `Update ING001 unit cost to 5.95`\n"
-            "* `Check stock for ING001`\n"
-            "Type `STOP` to exit Manager Mode."
-        )
+    "🧐 <b>Unrecognized Action.</b> Please use one of the following formats:\n"
+    "<ul>"
+    "<li><code>Bought 1 kg Flour for 5</code> (Adds new ingredient)</li>"
+    "<li><code>Increase ING001 quantity by 500 g</code></li>"
+    "<li><code>Update ING001 unit cost to 5.95</code></li>"
+    "<li><code>Check stock for ING001</code></li>"
+    "</ul>"
+    "Type <code>STOP</code> to exit Manager Mode."
+)
 
-    await update.message.reply_text(reply, parse_mode="Markdown")
+    await update.message.reply_text(reply, parse_mode="HTML")
     
     # Stay in the manager mode state, ready for the next command
     return INGREDIENT_MANAGER_MODE
@@ -160,7 +163,7 @@ async def dispatch_nlp_action(update: Update, context: ContextTypes.DEFAULT_TYPE
 INGREDIENTS_MANAGER_MODE_CONVERSATION_HANDLER = ConversationHandler(
     entry_points=[
         MessageHandler(
-            filters.Regex(r'(?i)^(Manage Ingredients|manager)$') & ~filters.COMMAND, 
+            filters.Regex(r'(?i)^(Manage Ingredients)$') & ~filters.COMMAND, 
             enter_manager_mode
         )
     ],

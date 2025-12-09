@@ -37,7 +37,7 @@ application.add_handler(
         send_global_welcome
     )
 )
-#application.add_handler(INGREDIENTS_MANAGER_MODE_CONVERSATION_HANDLER) 
+application.add_handler(INGREDIENTS_MANAGER_MODE_CONVERSATION_HANDLER) 
 
 # Global flag to track if the application has been initialized (Fix for UnboundLocalError)
 app_initialized = False

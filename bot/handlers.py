@@ -9,15 +9,16 @@ async def send_global_welcome(update: Update, context: ContextTypes.DEFAULT_TYPE
 
     # Using standard Python f-string or triple quotes with HTML tags (b and code)
     welcome_message = (
-        "👋 <b>Welcome to the Bakery Bot!</b>\n\n"
-        "I can help you manage your ingredients, track stock, and log costs.\n\n"
-        
+        "👋 <b>Welcome to the Precious Place Bot!</b>\n\n"
+        "I can help you manage your Ingredients, Recipies, and Cash Flow in natural language.\n\n"
+        "Enter the different modes with the commands below.\n\n"
+             
         "<b>📝 Available Modes</b>\n"
-        "• <b>Ingredient Manager Mode:</b> Type <code>Manage Ingredients</code> to switch the bot into natural language mode for tracking stock, costs, and purchases.\n"
-        "  • <b>In Manager Mode:</b> Send actions like <code>Bought 1 kg Flour for 5</code> or <code>Check stock for ING001</code>.\n"
-        "  • <b>To Exit:</b> Type <code>STOP</code>\n"
+        "• <b>Manage Ingredients:</b> Track Ingredients inventory, purchases and prices.\n"
         "• <b>[Future Mode 1]:</b> (e.g., Recipe Planner Mode)\n"
         "• <b>[Future Mode 2]:</b> (e.g., Financial Analysis Mode)\n\n"
+        
+        "Type \"Stop\" to return to this menu.\n\n"
         
         "<b>💬 Global Commands</b>\n"
         "You can type <code>start</code>, <code>hello</code>, or <code>help</code> anytime to see this message."
