@@ -14,22 +14,22 @@ INGREDIENT_MANAGER_MODE = range(7, 8)[0] # State ID 7
 
 # Regex 1: Handles NEW BUY/ADD
 BUY_REGEX = re.compile(
-    r"^(?i)(bought|add)\s+(?P<quantity>\d+(\.\d+)?)\s+(?P<unit>\w+)\s+(?P<name>.+?)\s+for\s+(?P<cost>\d+(\.\d+)?)$"
+    r"(?i)^(bought|add)\s+(?P<quantity>\d+(\.\d+)?)\s+(?P<unit>\w+)\s+(?P<name>.+?)\s+for\s+(?P<cost>\d+(\.\d+)?)$"
 )
 
 # Regex 2: Handles STOCK ADJUSTMENT 
 ADJUST_REGEX = re.compile(
-    r"^(?i)(increase|decrease|adjust)\s+(?P<name>.+?)\s+(quantity|stock)\s+(by|to)\s+(?P<quantity>\d+(\.\d+)?)\s+(?P<unit>\w+)$"
+    r"(?i)^(increase|decrease|adjust)\s+(?P<name>.+?)\s+(quantity|stock)\s+(by|to)\s+(?P<quantity>\d+(\.\d+)?)\s+(?P<unit>\w+)$"
 )
 
 # Regex 3: Handles PRICE UPDATE
 PRICE_UPDATE_REGEX = re.compile(
-    r"^(?i)(update)\s+(?P<name>.+?)\s+unit\s+cost\s+to\s+(?P<cost>\d+(\.\d+)?)$"
+    r"(?i)^(update)\s+(?P<name>.+?)\s+unit\s+cost\s+to\s+(?P<cost>\d+(\.\d+)?)$"
 )
 
 # Regex 4: Handles STOCK CHECK
 STOCK_CHECK_REGEX = re.compile(
-    r"^(?i)(show|check)\s+(stock|quantity)\s+for\s+(?P<name>.+)$"
+    r"(?i)^(show|check)\s+(stock|quantity)\s+for\s+(?P<name>.+)$"
 )
 
 async def enter_manager_mode(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
@@ -61,7 +61,7 @@ async def exit_manager_mode(update: Update, context: ContextTypes.DEFAULT_TYPE) 
 INGREDIENTS_MANAGER_MODE_CONVERSATION_HANDLER = ConversationHandler(
     entry_points=[
         MessageHandler(
-            filters.Regex(r'^(?i)(Manage Ingredients|manager)$') & ~filters.COMMAND, 
+            filters.Regex(r'(?i)^(Manage Ingredients|manager)$') & ~filters.COMMAND, 
             enter_manager_mode
         )
     ],
@@ -75,7 +75,7 @@ INGREDIENTS_MANAGER_MODE_CONVERSATION_HANDLER = ConversationHandler(
     },
     
     # We use a specific keyword 'STOP' to leave the mode
-    fallbacks=[MessageHandler(filters.Regex(r'^(?i)STOP$'), exit_manager_mode)],
+    fallbacks=[MessageHandler(filters.Regex(r'(?i)^STOP$'), exit_manager_mode)],
 )
 
 async def dispatch_nlp_action(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
