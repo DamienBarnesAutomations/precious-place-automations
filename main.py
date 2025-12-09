@@ -2,9 +2,10 @@ import os
 import uvicorn
 from fastapi import FastAPI, Request, HTTPException
 from telegram import Update
-from telegram.ext import Application, ContextTypes # Note: ContextTypes is still needed by the Application object
+from telegram.ext import Application, ContextTypes, MessageHandler # Note: ContextTypes is still needed by the Application object
 from starlette.responses import HTMLResponse
 import re
+#from telegram.ext import ContextTypes, ConversationHandler, CommandHandler, MessageHandler, filters
 
 # Import the necessary handler object
 from bot.handlers import send_global_welcome 
@@ -32,7 +33,7 @@ application = (
 application.add_handler(
     MessageHandler(
         # Use Regex to catch start, hello, or help (case-insensitive, non-command)
-        filters.Regex(r'^(?i)(start|hello|help)$') & ~filters.COMMAND,
+        filters.Regex(r'(?i)^(start|hello|help)$') & ~filters.COMMAND,
         send_global_welcome
     )
 )
