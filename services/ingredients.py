@@ -18,6 +18,11 @@ INGREDIENT_UNIT = 'Unit'
 INGREDIENT_Quantity = 'Quantity'
 INGREDIENT_COST_PER_UNIT = 'Cost Per Unit'
 
+#UNITS TABLE COLUMNS
+UNITS_FROM_UNIT = 'From_Unit'
+UNITS_To_Unit = 'To_Unit'
+UNITS_Conversion_Rate = 'Conversion_Rate'
+
 
 def get_conversion_rate(from_unit: str, to_unit: str) -> float | None:
     """
@@ -48,14 +53,14 @@ def get_conversion_rate(from_unit: str, to_unit: str) -> float | None:
     # 3. Search for the direct conversion (From -> To)
     for rule in conversion_rules:
         # Data integrity check: Ensure all required columns exist in the record
-        if all(key in rule for key in ['From Unit', 'To Unit', 'Conversion Rate']):
-            rule_from = rule['From Unit'].strip().lower()
-            rule_to = rule['To Unit'].strip().lower()
+        if all(key in rule for key in [UNITS_FROM_UNIT, UNITS_To_Unit, UNITS_Conversion_Rate]):
+            rule_from = rule[UNITS_FROM_UNIT].strip().lower()
+            rule_to = rule[UNITS_To_Unit].strip().lower()
 
             if rule_from == from_unit_clean and rule_to == to_unit_clean:
                 try:
                     # Safely convert the rate to a float
-                    rate = float(rule['Conversion Rate'])
+                    rate = float(rule[UNITS_Conversion_Rate])
                     logging.info(f"DIRECT RATE FOUND: {rule_from} -> {rule_to} = {rate}.")
                     return rate
                 except ValueError:
@@ -65,14 +70,14 @@ def get_conversion_rate(from_unit: str, to_unit: str) -> float | None:
 
     # 4. Search for the reverse conversion (To -> From) and calculate the inverse rate
     for rule in conversion_rules:
-        if all(key in rule for key in ['From Unit', 'To Unit', 'Conversion Rate']):
-            rule_from = rule['From Unit'].strip().lower()
-            rule_to = rule['To Unit'].strip().lower()
+        if all(key in rule for key in [UNITS_FROM_UNIT, UNITS_To_Unit, UNITS_Conversion_Rate]):
+            rule_from = rule[UNITS_FROM_UNIT].strip().lower()
+            rule_to = rule[UNITS_To_Unit].strip().lower()
 
             # Reverse check: Find rule where the TO unit is the rule's FROM and the FROM unit is the rule's TO
             if rule_from == to_unit_clean and rule_to == from_unit_clean:
                 try:
-                    direct_rate = float(rule['Conversion Rate'])
+                    direct_rate = float(rule[UNITS_Conversion_Rate])
                     if direct_rate == 0:
                         raise ZeroDivisionError("Rate is zero.")
                         
