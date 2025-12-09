@@ -36,7 +36,7 @@ async def global_fallback_handler(update: Update, context: ContextTypes.DEFAULT_
     """
     logging.info(f"FALLBACK: Received unhandled message from user {update.effective_user.id}: {update.message.text}")
     
-    = (
+    reply = (
         "👋 <b>Welcome to the Precious Place Bot!</b>\n\n"
         "I can help you manage your Ingredients, Recipies, and Cash Flow in natural language.\n\n"
         "Enter the different modes with the commands below.\n\n"
