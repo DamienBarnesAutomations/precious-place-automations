@@ -30,7 +30,7 @@ if not TELEGRAM_BOT_TOKEN:
 # --- Application Setup ---
 
 # Initialize the FastAPI application
-app = FastAPI(title="Telegram Bakery Bot Backend")
+app = FastAPI(title="Precious Place Bot Backend")
 
 # Initialize the PTB Application builder
 application = (
