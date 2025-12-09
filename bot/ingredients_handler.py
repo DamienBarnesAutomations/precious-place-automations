@@ -2,6 +2,8 @@ from telegram import Update
 from telegram.ext import ContextTypes, ConversationHandler, CommandHandler, MessageHandler, filters
 from services import ingredients 
 import re
+from services import ingredients 
+from services import conversion
 
 # --- Conversation States ---
 # Define states for the /add ingredient conversation flow
@@ -343,11 +345,144 @@ MANAGER_MODE_CONVERSATION_HANDLER = ConversationHandler(
     states={
         # P3.1.R2 will implement the dispatcher function that handles NLP here
         INGREDIENT_MANAGER_MODE: [
-            # Placeholder for the NLP dispatcher we will build in the next step
-            MessageHandler(filters.TEXT & ~filters.COMMAND, lambda u, c: INGREDIENT_MANAGER_MODE) 
+            
+            # --- Regular Expressions for NLP Actions ---
+
+            # Regex 1: Handles NEW BUY/ADD (The most complex one)
+            # Pattern: (Bought|Add) [QUANTITY] [UNIT] [NAME] for [COST]
+            # Example: Bought 1 kg Flour for 5
+            BUY_REGEX = re.compile(
+                r"^(bought|add)\s+(?P<quantity>\d+(\.\d+)?)\s+(?P<unit>\w+)\s+(?P<name>.+?)\s+for\s+(?P<cost>\d+(\.\d+)?)$",
+                re.IGNORECASE
+            )
+
+            # Regex 2: Handles STOCK ADJUSTMENT (Increase/Decrease)
+            # Pattern: (Increase|Decrease|Adjust) [NAME] quantity by [QUANTITY] [UNIT]
+            # Example: Increase Flour Quantity by 500 g
+            ADJUST_REGEX = re.compile(
+                r"^(increase|decrease|adjust)\s+(?P<name>.+?)\s+(quantity|stock)\s+(by|to)\s+(?P<quantity>\d+(\.\d+)?)\s+(?P<unit>\w+)$",
+                re.IGNORECASE
+            )
+
+            # Regex 3: Handles PRICE UPDATE
+            # Pattern: Update [NAME] unit cost to [COST]
+            # Example: Update Flour unit cost to 5.95
+            PRICE_UPDATE_REGEX = re.compile(
+                r"^(update)\s+(?P<name>.+?)\s+unit\s+cost\s+to\s+(?P<cost>\d+(\.\d+)?)$",
+                re.IGNORECASE
+            )
+
+            # Regex 4: Handles STOCK CHECK (Simple)
+            # Pattern: (Show|Check) (stock|quantity) for [NAME]
+            # Example: Check stock for Flour
+            STOCK_CHECK_REGEX = re.compile(
+                r"^(show|check)\s+(stock|quantity)\s+for\s+(?P<name>.+)$",
+                re.IGNORECASE
+            )
+            MessageHandler(filters.TEXT & ~filters.COMMAND, dispatch_nlp_action)
         ],
     },
     
     # We use a specific keyword 'STOP' to leave the mode
     fallbacks=[MessageHandler(filters.Regex(r'^STOP$', flags=re.IGNORECASE), exit_manager_mode)],
 )
+
+async def dispatch_nlp_action(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    """
+    Parses the incoming natural language message and calls the appropriate service function.
+    """
+    text = update.message.text.strip()
+    
+    # 1. Try to match the BUY/ADD pattern
+    if match := BUY_REGEX.match(text):
+        data = match.groupdict()
+        
+        # NOTE: This logic needs to decide if it's a new ingredient OR an existing ingredient update.
+        # Since we don't have a service function to search by NAME (only ID), 
+        # for now, we will treat everything that matches this pattern as a NEW ingredient.
+        # Future refinement: check if name exists, get its ID, then use P3.1.6/P3.1.8.
+        
+        # For P3.1.4 (add_new_ingredient) to work:
+        name = data['name'].strip()
+        quantity = float(data['quantity'])
+        unit = data['unit'].strip()
+        cost = float(data['cost'])
+
+        # --- Call Service Logic ---
+        new_id = await ingredients.add_new_ingredient(name, quantity, unit, cost)
+        
+        if new_id and new_id != "ERROR_SAVE_FAILED":
+            reply = f"🎉 **New Ingredient Added**\n\n**ID:** `{new_id}`\n**Name:** {name}\n**Stock:** {quantity} {unit}\n**Cost:** {cost:.2f} €"
+        else:
+            reply = f"❌ Error saving '{name}'. Please check the logs."
+
+    # 2. Try to match the ADJUST pattern (P3.1.8 logic)
+    elif match := ADJUST_REGEX.match(text):
+        data = match.groupdict()
+        name = data['name'].strip()
+        quantity = float(data['quantity'])
+        unit = data['unit'].strip()
+        action = data[1].lower() # 'increase' or 'decrease'
+        
+        # FUTURE DEPENDENCY: We need a function to get the ID from the NAME.
+        # For now, let's assume the user uses the ID for testing.
+        # Replace 'name' lookup with direct ID usage for now:
+        ingredient_id = name.upper() # Assuming user sends ID as the 'name' placeholder
+
+        # Invert quantity for 'decrease'
+        if action == 'decrease':
+            quantity *= -1
+
+        # --- Call Service Logic ---
+        if await ingredients.adjust_ingredient_stock(ingredient_id, quantity, unit):
+            reply = f"✅ Stock adjusted for **{name}** (`{ingredient_id}`)."
+        else:
+            reply = f"❌ Failed to adjust stock. Check if ID **`{ingredient_id}`** exists or if unit conversion failed."
+
+    # 3. Try to match the PRICE UPDATE pattern (P3.1.6 logic)
+    elif match := PRICE_UPDATE_REGEX.match(text):
+        # FUTURE DEPENDENCY: We need a function to get the ID from the NAME.
+        # For now, assume user sends ID.
+        data = match.groupdict()
+        ingredient_id = data['name'].strip().upper() 
+        new_price = float(data['cost'])
+        
+        # --- Call Service Logic ---
+        if await ingredients.update_ingredient_price(ingredient_id, new_price):
+            reply = f"💰 Price updated for **`{ingredient_id}`** to {new_price:.2f} €."
+        else:
+            reply = f"❌ Failed to update price. ID **`{ingredient_id}`** not found."
+            
+    # 4. Try to match the STOCK CHECK pattern (P3.1.7 logic)
+    elif match := STOCK_CHECK_REGEX.match(text):
+        # FUTURE DEPENDENCY: We need a function to get the ID from the NAME.
+        # For now, assume user sends ID.
+        data = match.groupdict()
+        ingredient_id = data['name'].strip().upper() 
+
+        # --- Call Service Logic ---
+        stock_info = await ingredients.get_ingredient_stock(ingredient_id) 
+        
+        if stock_info:
+            reply = (
+                f"✅ **Stock for {stock_info['name']}** (`{ingredient_id}`):\n\n"
+                f"**Current Stock:** {stock_info['stock']} {stock_info['unit']}"
+            )
+        else:
+            reply = f"❌ Ingredient ID **`{ingredient_id}`** was not found."
+
+    # 5. No match found
+    else:
+        reply = (
+            "🧐 **Unrecognized Action.** Please use one of the following formats:\n"
+            "* `Bought 1 kg Flour for 5` (Adds new ingredient)\n"
+            "* `Increase ING001 quantity by 500 g`\n"
+            "* `Update ING001 unit cost to 5.95`\n"
+            "* `Check stock for ING001`\n"
+            "Type `STOP` to exit Manager Mode."
+        )
+
+    await update.message.reply_text(reply, parse_mode="Markdown")
+    
+    # Stay in the manager mode state, ready for the next command
+    return INGREDIENT_MANAGER_MODE
