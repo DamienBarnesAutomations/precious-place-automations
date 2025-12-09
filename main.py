@@ -4,8 +4,10 @@ from fastapi import FastAPI, Request, HTTPException
 from telegram import Update
 from telegram.ext import Application, ContextTypes # Note: ContextTypes is still needed by the Application object
 from starlette.responses import HTMLResponse
+import re
 
 # Import the necessary handler object
+from bot.handlers import send_global_welcome 
 from bot.ingredients_handler import INGREDIENTS_MANAGER_MODE_CONVERSATION_HANDLER
 
 
@@ -27,6 +29,13 @@ application = (
 )
 
 # 🔑 Register the imported Conversation Handler
+application.add_handler(
+    MessageHandler(
+        # Use Regex to catch start, hello, or help (case-insensitive, non-command)
+        filters.Regex(r'^(?i)(start|hello|help)$') & ~filters.COMMAND,
+        send_global_welcome
+    )
+)
 application.add_handler(INGREDIENTS_MANAGER_MODE_CONVERSATION_HANDLER) 
 
 # Global flag to track if the application has been initialized (Fix for UnboundLocalError)

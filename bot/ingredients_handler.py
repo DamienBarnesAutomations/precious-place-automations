@@ -68,7 +68,7 @@ async def exit_manager_mode(update: Update, context: ContextTypes.DEFAULT_TYPE) 
 INGREDIENTS_MANAGER_MODE_CONVERSATION_HANDLER = ConversationHandler(
     entry_points=[
         MessageHandler(
-            filters.Regex(r'^(Manage Ingredients|manager)$', flags=re.IGNORECASE) & ~filters.COMMAND, 
+            filters.Regex(r'^(?i)(Manage Ingredients|manager)$') & ~filters.COMMAND, 
             enter_manager_mode
         )
     ],
@@ -82,7 +82,7 @@ INGREDIENTS_MANAGER_MODE_CONVERSATION_HANDLER = ConversationHandler(
     },
     
     # We use a specific keyword 'STOP' to leave the mode
-    fallbacks=[MessageHandler(filters.Regex(r'^STOP$', flags=re.IGNORECASE), exit_manager_mode)],
+    fallbacks=[MessageHandler(filters.Regex(r'^(?i)STOP$'), exit_manager_mode)],
 )
 
 async def dispatch_nlp_action(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
