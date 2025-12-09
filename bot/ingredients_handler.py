@@ -9,6 +9,40 @@ from services import conversion
 
 INGREDIENT_MANAGER_MODE = range(7, 8)[0] # State ID 7
 
+
+# --- Regular Expressions for NLP Actions ---
+# Regex 1: Handles NEW BUY/ADD (The most complex one)
+# Pattern: (Bought|Add) [QUANTITY] [UNIT] [NAME] for [COST]
+# Example: Bought 1 kg Flour for 5
+BUY_REGEX = re.compile(
+    r"^(bought|add)\s+(?P<quantity>\d+(\.\d+)?)\s+(?P<unit>\w+)\s+(?P<name>.+?)\s+for\s+(?P<cost>\d+(\.\d+)?)$",
+    re.IGNORECASE
+)
+
+# Regex 2: Handles STOCK ADJUSTMENT (Increase/Decrease)
+# Pattern: (Increase|Decrease|Adjust) [NAME] quantity by [QUANTITY] [UNIT]
+# Example: Increase Flour Quantity by 500 g
+ADJUST_REGEX = re.compile(
+    r"^(increase|decrease|adjust)\s+(?P<name>.+?)\s+(quantity|stock)\s+(by|to)\s+(?P<quantity>\d+(\.\d+)?)\s+(?P<unit>\w+)$",
+    re.IGNORECASE
+)
+
+# Regex 3: Handles PRICE UPDATE
+# Pattern: Update [NAME] unit cost to [COST]
+# Example: Update Flour unit cost to 5.95
+PRICE_UPDATE_REGEX = re.compile(
+    r"^(update)\s+(?P<name>.+?)\s+unit\s+cost\s+to\s+(?P<cost>\d+(\.\d+)?)$",
+    re.IGNORECASE
+)
+
+# Regex 4: Handles STOCK CHECK (Simple)
+# Pattern: (Show|Check) (stock|quantity) for [NAME]
+# Example: Check stock for Flour
+STOCK_CHECK_REGEX = re.compile(
+    r"^(show|check)\s+(stock|quantity)\s+for\s+(?P<name>.+)$",
+    re.IGNORECASE
+)
+
 async def enter_manager_mode(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     """
     Starts the conversation when the user types 'Manage Ingredients' (or similar command).
@@ -47,39 +81,6 @@ INGREDIENTS_MANAGER_MODE_CONVERSATION_HANDLER = ConversationHandler(
         # P3.1.R2 will implement the dispatcher function that handles NLP here
         INGREDIENT_MANAGER_MODE: [
             
-            # --- Regular Expressions for NLP Actions ---
-
-            # Regex 1: Handles NEW BUY/ADD (The most complex one)
-            # Pattern: (Bought|Add) [QUANTITY] [UNIT] [NAME] for [COST]
-            # Example: Bought 1 kg Flour for 5
-            BUY_REGEX = re.compile(
-                r"^(bought|add)\s+(?P<quantity>\d+(\.\d+)?)\s+(?P<unit>\w+)\s+(?P<name>.+?)\s+for\s+(?P<cost>\d+(\.\d+)?)$",
-                re.IGNORECASE
-            )
-
-            # Regex 2: Handles STOCK ADJUSTMENT (Increase/Decrease)
-            # Pattern: (Increase|Decrease|Adjust) [NAME] quantity by [QUANTITY] [UNIT]
-            # Example: Increase Flour Quantity by 500 g
-            ADJUST_REGEX = re.compile(
-                r"^(increase|decrease|adjust)\s+(?P<name>.+?)\s+(quantity|stock)\s+(by|to)\s+(?P<quantity>\d+(\.\d+)?)\s+(?P<unit>\w+)$",
-                re.IGNORECASE
-            )
-
-            # Regex 3: Handles PRICE UPDATE
-            # Pattern: Update [NAME] unit cost to [COST]
-            # Example: Update Flour unit cost to 5.95
-            PRICE_UPDATE_REGEX = re.compile(
-                r"^(update)\s+(?P<name>.+?)\s+unit\s+cost\s+to\s+(?P<cost>\d+(\.\d+)?)$",
-                re.IGNORECASE
-            )
-
-            # Regex 4: Handles STOCK CHECK (Simple)
-            # Pattern: (Show|Check) (stock|quantity) for [NAME]
-            # Example: Check stock for Flour
-            STOCK_CHECK_REGEX = re.compile(
-                r"^(show|check)\s+(stock|quantity)\s+for\s+(?P<name>.+)$",
-                re.IGNORECASE
-            )
             MessageHandler(filters.TEXT & ~filters.COMMAND, dispatch_nlp_action)
         ],
     },
