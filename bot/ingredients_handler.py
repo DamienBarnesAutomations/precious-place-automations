@@ -57,27 +57,6 @@ async def exit_manager_mode(update: Update, context: ContextTypes.DEFAULT_TYPE) 
     return ConversationHandler.END
     
     
-
-INGREDIENTS_MANAGER_MODE_CONVERSATION_HANDLER = ConversationHandler(
-    entry_points=[
-        MessageHandler(
-            filters.Regex(r'(?i)^(Manage Ingredients|manager)$') & ~filters.COMMAND, 
-            enter_manager_mode
-        )
-    ],
-    
-    states={
-        # P3.1.R2 will implement the dispatcher function that handles NLP here
-        INGREDIENT_MANAGER_MODE: [
-            
-            MessageHandler(filters.TEXT & ~filters.COMMAND, dispatch_nlp_action)
-        ],
-    },
-    
-    # We use a specific keyword 'STOP' to leave the mode
-    fallbacks=[MessageHandler(filters.Regex(r'(?i)^STOP$'), exit_manager_mode)],
-)
-
 async def dispatch_nlp_action(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     """
     Parses the incoming natural language message and calls the appropriate service function.
@@ -177,3 +156,23 @@ async def dispatch_nlp_action(update: Update, context: ContextTypes.DEFAULT_TYPE
     
     # Stay in the manager mode state, ready for the next command
     return INGREDIENT_MANAGER_MODE
+
+INGREDIENTS_MANAGER_MODE_CONVERSATION_HANDLER = ConversationHandler(
+    entry_points=[
+        MessageHandler(
+            filters.Regex(r'(?i)^(Manage Ingredients|manager)$') & ~filters.COMMAND, 
+            enter_manager_mode
+        )
+    ],
+    
+    states={
+        # P3.1.R2 will implement the dispatcher function that handles NLP here
+        INGREDIENT_MANAGER_MODE: [
+            
+            MessageHandler(filters.TEXT & ~filters.COMMAND, dispatch_nlp_action)
+        ],
+    },
+    
+    # We use a specific keyword 'STOP' to leave the mode
+    fallbacks=[MessageHandler(filters.Regex(r'(?i)^STOP$'), exit_manager_mode)],
+)
