@@ -1,5 +1,5 @@
 from telegram import Update
-from telegram.ext import ContextTypes
+from telegram.ext import ContextTypes, ConversationHandler, CommandHandler, MessageHandler, filters
 import logging
 import re
 
@@ -26,6 +26,15 @@ RECIPE_MANAGER_WELCOME_MESSAGE = (
     "• <b>Check Capacity:</b> <code>How many loaves of Sourdough can I make?</code>\n"
     "• <b>Show Recipe:</b> <code>Show recipe Sourdough Loaf</code>\n\n"
     "Type <code>STOP</code> to exit this mode."
+)
+
+ADD_INGREDIENT_REGEX = re.compile(
+    r"(?i)^(?:to|for)\s+"                   # Match starting preposition (To / For)
+    r"(?P<recipe_name>.+?),"                # Capture recipe name (non-greedy)
+    r"(?:\s*add|\s*require|\s*use)\s*"      # Match action verb (add/require/use)
+    r"(?P<required_quantity>\d+(\.\d+)?)\s*"# Capture numeric quantity (optional space)
+    r"(?P<required_unit>\w+)\s+"            # Capture unit (mandatory space)
+    r"(?P<ingredient_name>.+?)$"            # Capture ingredient name
 )
 
 async def start_recipe_manager_mode(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
