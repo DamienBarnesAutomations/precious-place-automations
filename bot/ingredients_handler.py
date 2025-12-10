@@ -29,7 +29,7 @@ ADJUSTMENT_REGEX = re.compile(
     r"(?P<name>.+?)\s+"  # Capture ingredient name (non-greedy)
     r"(?:quantity|stock)\s+"  # Match "quantity" or "stock" (non-capturing)
     r"by\s+"  # Match the preposition "by"
-    r"(?P<quantity>\d+(\.\d+)?)\s+"  # Capture the numeric quantity
+    r"(?P<quantity>\d+(\.\d+)?)\s*?"  # Capture quantity, and make the trailing space optional (the fix is the \s*?)
     r"(?P<unit>\w+)$"  # Capture the unit
 )
 
@@ -164,44 +164,6 @@ async def _handle_purchase_action(update: Update, data: dict, user_id: str | int
         return f"❌ Purchase failed for '{name}'. Reason: {status_message}. Check logs."
 
 
-async def _handle_adjust_action(update: Update, data: dict) -> str:
-    """Handles the ADJUST pattern by updating the stock quantity directly."""
-    user_input_name = data['name'].strip()
-    
-    try:
-        quantity = float(data['quantity'])
-        unit = data['unit'].strip()
-        action = data['action'].lower() # 'set' or 'adjust' (depending on your regex definition)
-    except (ValueError, KeyError) as e:
-        logging.error(f"Adjust data error for '{user_input_name}': Invalid quantity format. Exception: {e}")
-        return "❌ Input error: Quantity must be a valid number."
-        
-    logging.info(f"ACTION: Adjust detected for {user_input_name} | Qty: {quantity} {unit} | Action: {action}")
-    
-    # Resolve name to ingredient record using the robust utility
-    ingredient_record = ingredients._find_ingredient_by_name(user_input_name)
-    
-    if not ingredient_record:
-        logging.warning(f"Adjust failed: Ingredient '{user_input_name}' not found.")
-        return f"❌ Failed to adjust stock. Ingredient **{user_input_name}** not found."
-        
-    # NOTE: Since the prompt states this is a straight replace, we call adjust_ingredient_quantity.
-    # If the user intended "increase/decrease", we would use process_ingredient_purchase (which adds stock).
-    
-    # If the unit in the input differs from the stored unit, this action might be invalid
-    stored_unit = ingredient_record.get(ingredients.INGREDIENT_UNIT, 'N/A')
-    if unit.lower() != stored_unit.lower():
-         # In a strict "replace" context, unit mismatch is usually an error unless you handle conversion here.
-         logging.warning(f"Adjust failed: Unit mismatch. Input '{unit}' vs Stored '{stored_unit}'.")
-         return f"❌ Unit mismatch: Please use the stored unit **{stored_unit}** to set the stock for {user_input_name}."
-
-    if await ingredients.adjust_ingredient_quantity(user_input_name, quantity):
-        return f"✅ Stock for **{user_input_name}** successfully set to {quantity:.4f} {stored_unit}."
-    else:
-        logging.error(f"Adjust failed for '{user_input_name}' due to service error.")
-        return f"❌ Failed to update stock for {user_input_name}. Please check the logs."
-
-
 async def _handle_price_update_action(update: Update, data: dict) -> str:
     """
     Handles the PRICE STATEMENT pattern (e.g., '1 kg Flour is now 5')
@@ -272,6 +234,86 @@ async def _handle_stock_check_action(update: Update, data: dict) -> str:
         f"✅ **Stock for {user_input_name}**:\n\n"
         f"**Current Stock:** {stock} {unit}"
     )
+    
+async def _handle_stock_set_action(update: Update, data: dict) -> str:
+    """
+    Handles the SET STOCK pattern (e.g., 'Set Flour stock to 5 kg').
+    Passes the input directly to the set_ingredient_stock service function.
+    """
+    user_input_name = data.get('name', '').strip()
+    input_unit = data.get('unit', '').strip()
+
+    # Safely convert quantity
+    try:
+        input_quantity = float(data['quantity'])
+    except (ValueError, KeyError):
+        logging.error(f"Stock set data error for '{user_input_name}': Invalid quantity format.")
+        return "❌ Input error: The stock quantity must be a valid number."
+        
+    # Check for negative or zero input (cannot set stock to negative)
+    if input_quantity < 0:
+        return "❌ Stock value cannot be set to a negative amount."
+
+    user_id = update.effective_user.id if update.effective_user else None
+        
+    logging.info(f"ACTION: Stock set detected for {user_input_name} to {input_quantity} {input_unit} (User: {user_id}).")
+
+    # Call the service function
+    success, message = await ingredients.set_ingredient_stock(
+        name=user_input_name, 
+        input_quantity=input_quantity, 
+        input_unit=input_unit, 
+        user_id=user_id
+    )
+    
+    if success:
+        # The service returns the final formatted message upon success
+        return f"✅ **Stock Set Success!** {message}"
+    else:
+        # The service returns the error status message upon failure
+        logging.error(f"Stock set failed for '{user_input_name}'. Error: {message}")
+        return f"❌ Failed to set stock for {user_input_name}. {message}"
+        
+async def _handle_stock_adjustment_action(update: Update, data: dict) -> str:
+    """
+    Handles the ADJUST STOCK pattern (e.g., 'Increase Flour stock by 2 kg').
+    Passes the action and quantity to the service function for relative adjustment.
+    """
+    user_input_name = data.get('name', '').strip()
+    action = data.get('action', '').strip() # Retrieve the action (increase/decrease/adjust)
+    input_unit = data.get('unit', '').strip()
+
+    # Safely convert quantity
+    try:
+        input_quantity = float(data['quantity'])
+    except (ValueError, KeyError):
+        logging.error(f"Stock adjustment data error for '{user_input_name}': Invalid quantity format.")
+        return "❌ Input error: The adjustment quantity must be a valid number."
+
+    # Check for negative or zero input (the action determines the sign, not the quantity value)
+    if input_quantity <= 0:
+        return "❌ Input error: The quantity to adjust by must be greater than zero."
+
+    user_id = update.effective_user.id if update.effective_user else None
+
+    logging.info(f"ACTION: Stock adjustment detected for {user_input_name}: {action} by {input_quantity} {input_unit} (User: {user_id}).")
+
+    # Call the service function
+    success, message = await ingredients.adjust_ingredient_stock(
+        name=user_input_name,
+        action=action, # Pass the action directly
+        input_quantity=input_quantity,
+        input_unit=input_unit,
+        user_id=user_id
+    )
+
+    if success:
+        # The service returns the final formatted message upon success
+        return f"✅ **Stock Adjusted!** {message}"
+    else:
+        # The service returns the error status message upon failure
+        logging.error(f"Stock adjustment failed for '{user_input_name}'. Error: {message}")
+        return f"❌ Failed to adjust stock for {user_input_name}. {message}"
 
 
 # --- Main Dispatcher ---
@@ -295,7 +337,7 @@ async def dispatch_nlp_action(update: Update, context: ContextTypes.DEFAULT_TYPE
         # 2. Try to match the ADJUST pattern (direct stock replacement)
         elif match := ADJUSTMENT_REGEX.match(text):
             # NOTE: Assuming the regex uses named groups 'name', 'quantity', and 'action' (e.g., 'set', 'replace')
-            reply = await _handle_adjust_action(update, match.groupdict())
+            reply = await _handle_stock_adjustment_action(update, match.groupdict())
 
         # 3. Try to match the PRICE UPDATE pattern
         elif match := PRICE_UPDATE_REGEX.match(text):
@@ -305,16 +347,29 @@ async def dispatch_nlp_action(update: Update, context: ContextTypes.DEFAULT_TYPE
         elif match := QUANTITY_CHECK_REGEX.match(text):
             reply = await _handle_stock_check_action(update, match.groupdict())
             
+        elif match := SET_STOCK_REGEX.match(text):
+            reply = await _handle_stock_set_action(update, match.groupdict())
+            
         # 5. No match found
         else:
             reply = (
     "🧐 <b>Unrecognized Action.</b> Please use one of the following formats:\n\n"
     "<b>Available Commands:</b>\n"
-    "• Purchase/Stock Update: <code>Bought 1 kg Flour for 5</code>\n"
-    "• Stock Replacement: <code>Set Flour stock to 5 kg</code>\n"
-    "• Price Update: <code>Update Flour unit cost to 5.95</code>\n"
-    "• Stock Check: <code>Check stock for Flour</code>\n\n"
+    
+    "• **Record Purchase:** <code>Bought 1 kg Flour for 5</code>\n"
+    "  (Also updates stock and cost.)\n\n"
+    
+    "• **Check Stock:** <code>What is the stock of Flour?</code>\n"
+    "  (Or similar natural questions like 'Quantity for Eggs?')\n\n"
+    
+    "• **Set Stock (Absolute):** <code>Set Flour stock to 5 kg</code>\n"
+    "  (Replaces the current stock total.)\n\n"
+    
+    "• **Adjust Stock (Relative):** <code>Increase Flour stock by 2 kg</code>\n"
+    "  (Also works with 'decrease' or 'adjust'.)\n\n"
+    
     "Type <code>STOP</code> to exit Manager Mode."
+)
 )
 
     except Exception as e:

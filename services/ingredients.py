@@ -423,6 +423,164 @@ async def update_ingredient_cost_per_unit(name: str, input_quantity: float, inpu
     logging.info(f"END PRICE UPDATE: Completed for '{name}'. Success: {update_success}")
     return update_success
     
+async def set_ingredient_stock(name: str, input_quantity: float, input_unit: str, user_id: str | int | None = None) -> tuple[bool, str]:
+    """
+    Sets the stock of an existing ingredient to an absolute value, handling unit conversion.
+    
+    Returns a tuple: (success_bool, status_message).
+    """
+    logging.info(f"START SET STOCK: Setting stock for '{name}' to {input_quantity} {input_unit} (User: {user_id}).")
+    
+    # 1. Find the existing ingredient record
+    try:
+        ingredient = await _find_ingredient_by_name(name)
+    except Exception as e:
+        logging.error(f"DATABASE READ FAILED: Error during lookup for '{name}'. Exception: {e}")
+        return False, "Failed to look up ingredient."
+
+    if not ingredient:
+        logging.warning(f"SET STOCK ABORTED: Ingredient '{name}' not found.")
+        return False, f"Ingredient '{name}' not found."
+    
+    # 2. Retrieve necessary data
+    try:
+        i_id = ingredient[INGREDIENT_ID]
+        current_unit = ingredient[INGREDIENT_UNIT]
+        current_quantity = float(ingredient.get(INGREDIENT_Quantity, 0.0))
+    except (KeyError, ValueError, TypeError) as e:
+        logging.error(f"DATA INTEGRITY ERROR: Cannot read required fields for ID {i_id}. Exception: {e}")
+        return False, "Database error: Corrupted ingredient data."
+
+    # 3. Calculate the new stock in the STORED unit
+    
+    # 3a. Check for unit mismatch and perform conversion if needed
+    if current_unit.strip().lower() != input_unit.strip().lower():
+        logging.info(f"UNIT MISMATCH: Stored unit '{current_unit}' requires conversion from input unit '{input_unit}'.")
+        
+        try:
+            # Get the rate: (Input Unit -> Stored Unit)
+            rate = await get_conversion_rate(input_unit, current_unit)
+        except Exception as e:
+            logging.error(f"CONVERSION SERVICE ERROR: Failed to query units table. Exception: {e}")
+            return False, "Error occurred while looking up conversion rate."
+
+        if rate is None:
+            logging.error(f"CONVERSION FAILED: No conversion rate found between {input_unit} and {current_unit}. Aborting.")
+            return False, f"Unit conversion failed: No rate found between {input_unit} and {current_unit}."
+            
+        # Convert the input quantity to the stored inventory unit
+        new_quantity_in_stored_unit = input_quantity * rate
+        logging.info(f"CONVERSION SUCCESS: Converted input Qty: {new_quantity_in_stored_unit:.4f} {current_unit}.")
+    else:
+        # Units match, no conversion needed
+        new_quantity_in_stored_unit = input_quantity
+        logging.info("UNIT MATCH: Units are identical. No conversion needed.")
+
+    # 4. Update the 'Ingredients' sheet
+    updates = {
+        # Set the stock to the calculated absolute value (after conversion)
+        INGREDIENT_Quantity: f"{new_quantity_in_stored_unit:.4f}"
+    }
+    
+    try:
+        update_success = queries.update_row_by_id(INGREDIENTS_SHEET, i_id, updates, user_id=user_id)
+    except Exception as e:
+        logging.error(f"DATABASE WRITE FAILED: Could not update ingredient ID {i_id}. Exception: {e}")
+        return False, "Failed to save stock update to the ingredient record."
+
+    if update_success:
+        logging.info(f"END SET STOCK SUCCESS: Stock for ID {i_id} set from {current_quantity:.4f} {current_unit} to {new_quantity_in_stored_unit:.4f} {current_unit}.")
+        return True, f"Stock for **{name}** set to {new_quantity_in_stored_unit:.2f} {current_unit}."
+    else:
+        logging.error(f"DATABASE WRITE FAILED: Update function returned failure for ID {i_id}.")
+        return False, f"Failed to save updates to ingredient '{name}'."
+        
+async def adjust_ingredient_stock(name: str, action: str, input_quantity: float, input_unit: str, user_id: str | int | None = None) -> tuple[bool, str]:
+    """
+    Adjusts the stock of an existing ingredient relative to its current value, handling unit conversion.
+    
+    Returns a tuple: (success_bool, status_message).
+    """
+    action_clean = action.strip().lower()
+    logging.info(f"START ADJUST STOCK: {action_clean} stock for '{name}' by {input_quantity} {input_unit} (User: {user_id}).")
+    
+    # 1. Find the existing ingredient record
+    try:
+        ingredient = await _find_ingredient_by_name(name)
+    except Exception as e:
+        logging.error(f"DATABASE READ FAILED: Error during lookup for '{name}'. Exception: {e}")
+        return False, "Failed to look up ingredient."
+
+    if not ingredient:
+        logging.warning(f"ADJUST STOCK ABORTED: Ingredient '{name}' not found.")
+        return False, f"Ingredient '{name}' not found."
+    
+    # 2. Retrieve necessary data
+    try:
+        i_id = ingredient[INGREDIENT_ID]
+        current_unit = ingredient[INGREDIENT_UNIT]
+        # Get current quantity to calculate the new stock
+        current_quantity = float(ingredient.get(INGREDIENT_Quantity, 0.0))
+    except (KeyError, ValueError, TypeError) as e:
+        logging.error(f"DATA INTEGRITY ERROR: Cannot read required fields for ID {i_id}. Exception: {e}")
+        return False, "Database error: Corrupted ingredient data."
+
+    # 3. Calculate the adjustment amount in the STORED unit
+    
+    # 3a. Convert input quantity to stored unit
+    adjustment_amount_in_stored_unit = input_quantity
+    
+    if current_unit.strip().lower() != input_unit.strip().lower():
+        try:
+            # Get the rate: (Input Unit -> Stored Unit)
+            rate = await get_conversion_rate(input_unit, current_unit)
+        except Exception as e:
+            logging.error(f"CONVERSION SERVICE ERROR: Failed to query units table. Exception: {e}")
+            return False, "Error occurred while looking up conversion rate."
+
+        if rate is None:
+            logging.error(f"CONVERSION FAILED: No conversion rate found between {input_unit} and {current_unit}. Aborting.")
+            return False, f"Unit conversion failed: No rate found between {input_unit} and {current_unit}."
+            
+        adjustment_amount_in_stored_unit = input_quantity * rate
+        logging.info(f"CONVERSION SUCCESS: Adjusted amount converted to {adjustment_amount_in_stored_unit:.4f} {current_unit}.")
+    else:
+        logging.info("UNIT MATCH: Adjustment amount used directly.")
+
+    # 4. Apply the adjustment based on the action
+    
+    if action_clean in ['increase', 'add']:
+        new_quantity = current_quantity + adjustment_amount_in_stored_unit
+    elif action_clean in ['decrease', 'subtract', 'adjust']:
+        new_quantity = current_quantity - adjustment_amount_in_stored_unit
+    else:
+        logging.error(f"INVALID ACTION: Unknown adjustment action '{action_clean}' provided.")
+        return False, f"Invalid stock action: '{action_clean}'. Must be increase or decrease."
+
+    # 5. Check for invalid resulting stock (negative inventory)
+    if new_quantity < 0:
+        logging.warning(f"ADJUST STOCK ABORTED: Resulting quantity for '{name}' would be negative ({new_quantity:.4f}).")
+        return False, "Stock adjustment failed: Resulting quantity cannot be negative."
+
+    # 6. Update the 'Ingredients' sheet
+    updates = {
+        # Set the stock to the calculated relative value
+        INGREDIENT_Quantity: f"{new_quantity:.4f}"
+    }
+    
+    try:
+        update_success = queries.update_row_by_id(INGREDIENTS_SHEET, i_id, updates, user_id=user_id)
+    except Exception as e:
+        logging.error(f"DATABASE WRITE FAILED: Could not update ingredient ID {i_id}. Exception: {e}")
+        return False, "Failed to save stock adjustment to the ingredient record."
+
+    if update_success:
+        logging.info(f"END ADJUST STOCK SUCCESS: Stock for ID {i_id} changed from {current_quantity:.4f} {current_unit} to {new_quantity:.4f} {current_unit}.")
+        return True, f"Stock for **{name}** {action_clean}d to {new_quantity:.2f} {current_unit}."
+    else:
+        logging.error(f"DATABASE WRITE FAILED: Update function returned failure for ID {i_id}.")
+        return False, f"Failed to save updates to ingredient '{name}'."
+    
     
         
 async def adjust_ingredient_quantity(name: str, new_quantity: float, user_id: str | int | None = None) -> bool:
