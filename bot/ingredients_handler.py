@@ -34,9 +34,9 @@ ADJUSTMENT_REGEX = re.compile(
 )
 
 # Regex 3: Handles PRICE UPDATE
-PRICE_UPDATE_REGEX = PRICE_STATEMENT_REGEX = re.compile(
-    r"(?i)^(?P<quantity>\d+(\.\d+)?)\s+"  # Capture quantity (e.g., 1)
-    r"(?P<unit>\w+)\s+"  # Capture unit (e.g., kg)
+PRICE_UPDATE_REGEX = re.compile(
+    r"(?i)^(?P<quantity>\d+(\.\d+)?)\s*?"  # Capture quantity, making trailing space optional (\s*?)
+    r"(?P<unit>\w+)\s+"  # Capture unit, followed by a mandatory space before the name
     r"(?P<name>.+?)\s+"  # Capture ingredient name (non-greedy)
     r"(?:is\s+now|now\s+costs)\s+"  # Match the phrase "is now" or "now costs"
     r"(?:[€$£]\s*)?"  # Optional currency symbol (non-capturing)
@@ -54,7 +54,17 @@ SET_STOCK_REGEX = re.compile(
 
 # Regex 4: Handles STOCK CHECK
 QUANTITY_CHECK_REGEX = re.compile(
-    r"(?i)^(what(\'s| is) )?\s*(the\s*)?(stock|quantity)\s+(of|for|for the|of the)\s+(?P<name>.+?)\?*$"
+    r"(?i)"                                     # Case-insensitive
+    r"(\s*^what(\'s| is) )?(\s*the\s*)?"       # Optional: (What is the)
+    r"(stock|quantity)\s+"                      # Match: stock or quantity
+    r"(of|for|for the|of the)\s+"               # Match: of / for
+    r"(?P<name>.+?)\?*$"                        # Capture: Name
+
+    r"|"                                        # OR operator (matches either side)
+
+    r"(\s*^how\s+(much|many)\s+)"               # Match: (How much/many)
+    r"(?P<name_q>.+?)\s+"                       # Capture: Name (separate group for safety)
+    r"(do\s+i\s+have|is\s+in\s+stock)\?*$"      # Match: do i have / is in stock
 )
 
 async def enter_manager_mode(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
