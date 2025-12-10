@@ -8,7 +8,7 @@ import logging
 
 # --- Conversation States ---
 
-INGREDIENT_MANAGER_MODE = range(7, 8)[0] # State ID 7
+INGREDIENT_MANAGER_MODE = 1 # State ID 7
 
 
 # --- Regular Expressions for NLP Actions  ---
@@ -67,21 +67,7 @@ QUANTITY_CHECK_REGEX = re.compile(
     r"(do\s+i\s+have|is\s+in\s+stock)\?*$"      # Match: do i have / is in stock
 )
 
-async def enter_manager_mode(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-    """
-    Starts the conversation when the user types the entry command.
-    Sets the user's state to 'INGREDIENT_MANAGER' and sends the welcome message.
-    """
-    user_id = update.effective_user.id
-    
-    logging.info(f"USER {user_id}: Attempting to enter Ingredient Manager Mode.")
-
-    try:
-        # 1. Set the user state in user_data
-        context.user_data['mode'] = 'INGREDIENT_MANAGER'
-        
-        # 2. Send the welcome message
-        message = (
+INGREDIENTS_MANAGER_WELCOME_MESSAGE = (
     "📝 <b>Ingredients Manager Mode</b>\n\n"
     "<b>Available Actions:</b>\n"
     
@@ -102,8 +88,24 @@ async def enter_manager_mode(update: Update, context: ContextTypes.DEFAULT_TYPE)
     
     "Type <code>STOP</code> to exit this mode."
 )
+
+async def enter_manager_mode(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    """
+    Starts the conversation when the user types the entry command.
+    Sets the user's state to 'INGREDIENT_MANAGER' and sends the welcome message.
+    """
+    user_id = update.effective_user.username
+    
+    logging.info(f"USER {user_id}: Attempting to enter Ingredient Manager Mode.")
+
+    try:
+        # 1. Set the user state in user_data
+        context.user_data['mode'] = 'INGREDIENT_MANAGER'
+        
+        # 2. Send the welcome message
+        
         await update.message.reply_text(
-            message,
+            INGREDIENTS_MANAGER_WELCOME_MESSAGE,
             parse_mode="HTML"
         )
         
@@ -122,7 +124,7 @@ async def exit_manager_mode(update: Update, context: ContextTypes.DEFAULT_TYPE) 
     """
     Exits the Ingredient Manager Mode conversation flow.
     """
-    user_id = update.effective_user.id
+    user_id = update.effective_user.username
 
     logging.info(f"USER {user_id}: Attempting to exit Ingredient Manager Mode.")
 
@@ -204,7 +206,7 @@ async def _handle_price_update_action(update: Update, data: dict) -> str:
         return "❌ Input error: Quantity must be a valid number."
 
     # Retrieve User ID for auditing
-    user_id = update.effective_user.id if update.effective_user else None
+    user_id = update.effective_user.username if update.effective_user else None
         
     logging.info(f"ACTION: Price statement detected for {user_input_name}. Input: {input_quantity} {input_unit} now costs {new_price} € (User: {user_id}).")
 
@@ -281,7 +283,7 @@ async def _handle_stock_set_action(update: Update, data: dict) -> str:
     if input_quantity < 0:
         return "❌ Stock value cannot be set to a negative amount."
 
-    user_id = update.effective_user.id if update.effective_user else None
+    user_id = update.effective_user.username if update.effective_user else None
         
     logging.info(f"ACTION: Stock set detected for {user_input_name} to {input_quantity} {input_unit} (User: {user_id}).")
 
@@ -321,7 +323,7 @@ async def _handle_stock_adjustment_action(update: Update, data: dict) -> str:
     if input_quantity <= 0:
         return "❌ Input error: The quantity to adjust by must be greater than zero."
 
-    user_id = update.effective_user.id if update.effective_user else None
+    user_id = update.effective_user.username if update.effective_user else None
 
     logging.info(f"ACTION: Stock adjustment detected for {user_input_name}: {action} by {input_quantity} {input_unit} (User: {user_id}).")
 

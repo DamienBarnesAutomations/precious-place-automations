@@ -15,6 +15,7 @@ logger = logging.getLogger(__name__)
 # Import the necessary handlers and conversation state machine
 from bot.handlers import send_global_welcome, global_fallback_handler
 from bot.ingredients_handler import INGREDIENTS_MANAGER_MODE_CONVERSATION_HANDLER
+from bot.recipe_handler import RECIPE_MANAGER_MODE_CONVERSATION_HANDLER
 
 
 # --- Configuration ---
@@ -50,6 +51,8 @@ application.add_handler(
 
 # 🔑 Register the Ingredients Manager Conversation Handler
 application.add_handler(INGREDIENTS_MANAGER_MODE_CONVERSATION_HANDLER) 
+
+application.add_handler(RECIPE_MANAGER_MODE_CONVERSATION_HANDLER) 
 
 # 🔑 Register the Global Fallback Handler (must be registered last)
 # It handles all remaining text messages that are not commands

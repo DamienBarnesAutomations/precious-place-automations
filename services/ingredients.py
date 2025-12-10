@@ -8,8 +8,8 @@ import logging
 INGREDIENTS_SHEET = "Ingredients"
 PRICE_HISTORY_SHEET = "Price_History"
 UNITS_SHEET = "Units"
-CONFIG_SHEET = "Config"
 NEXT_ING_ID_KEY = "NEXT_ING_ID"
+ID_PREFIX = "ING"
 PRICE_HISTORY_SHEET = "Price_History"
 
 #INGREDIENTS TABLE COLUMNS
@@ -102,69 +102,6 @@ async def get_conversion_rate(from_unit: str, to_unit: str) -> float | None:
     logging.warning(f"RATE NOT FOUND: No conversion rule found between {from_unit_clean} and {to_unit_clean}.")
     return None
 
-def _get_current_counter_value(key: str) -> int:
-    """Retrieves the current integer value of an ID counter from the Config sheet."""
-    # Added error handling for database read
-    try:
-        config_records = queries.get_all_records(CONFIG_SHEET)
-    except Exception as e:
-        logging.error(f"CONFIG READ FAILED: Could not retrieve config records. Exception: {e}")
-        return 0
-    
-    current_value = 0
-    # Search for the specified key
-    for record in config_records:
-        if record.get('Key') == key:
-            # Assumes the value is a string like "ING001". We extract the number.
-            try:
-                # We skip the first 3 chars ("ING") and convert to integer
-                # Added check for minimum length
-                value_str = record.get('Value', '000')
-                if len(value_str) >= 3:
-                    current_value = int(value_str[3:])
-            except (ValueError, IndexError):
-                # Handle cases where the format might be incorrect or the string is too short
-                logging.warning(f"CONFIG DATA ERROR: Invalid format for key '{key}'. Value: '{record.get('Value')}'")
-                current_value = 0
-            break
-    return current_value
-
-
-def _update_counter_value(key: str, new_value: str) -> bool:
-    """
-    Updates the value of an ID counter in the Config sheet.
-    
-    This function uses update_row_by_id, relying on the 'Key' being in the first column (ID equivalent).
-    """
-    try:
-        updates = {"Value": new_value}
-        # P2.5: Use update_row_by_id to find the key and update the 'Value' column
-        return queries.update_row_by_id(CONFIG_SHEET, key, updates)
-    except Exception as e:
-        # Replaced print() with logging.error
-        logging.error(f"CONFIG WRITE FAILED: Failed to update config key {key}. Exception: {e}")
-        return False
-
-
-def _generate_and_commit_new_id(key_prefix: str, config_key: str) -> str:
-    """Handles the transactional logic for generating and committing a new sequential ID."""
-    
-    # 1. Get the current counter value
-    current_id_value = _get_current_counter_value(config_key)
-    
-    # 2. Calculate the next ID and format it (e.g., ING001)
-    next_id_number = current_id_value + 1
-    new_formatted_id = f"{key_prefix}{next_id_number:03}"
-    
-    # 3. Update the Config sheet with the new formatted ID value
-    # NOTE: In a real system, steps 1 & 3 must be atomic/transactional.
-    if _update_counter_value(config_key, new_formatted_id):
-        return new_formatted_id
-    else:
-        # Replaced print() with logging.warning and returned a unique ID on failure
-        logging.warning("ID UPDATE FAILED: Failed to update sequential ID. Returning UUID fallback.")
-        return f"{key_prefix}-{uuid.uuid4().hex[:6].upper()}"
-
 
 # --- Core Service Functions ---
 
@@ -240,7 +177,7 @@ async def add_new_ingredient(name: str, stock: float, unit: str, cost: float, us
     # 1. Generate and commit the new sequential ID (P3.1.4)
     try:
         # Generate the next available sequential ID (e.g., ING001)
-        new_id = _generate_and_commit_new_id("ING", NEXT_ING_ID_KEY)
+        new_id = queries.get_next_unique_id(NEXT_ING_ID_KEY, ID_PREFIX)
         if not new_id:
             logging.error("ID GENERATION FAILED: _generate_and_commit_new_id returned empty string.")
             return "ERROR_SAVE_FAILED"
