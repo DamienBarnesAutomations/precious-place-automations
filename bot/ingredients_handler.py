@@ -224,19 +224,36 @@ async def _handle_price_update_action(update: Update, data: dict) -> str:
 
 
 async def _handle_stock_check_action(update: Update, data: dict) -> str:
-    """Handles the STOCK CHECK pattern (P3.1.7 logic)."""
-    user_input_name = data['name'].strip()
+    """
+    Handles the STOCK CHECK pattern, robustly checking all potential name capture groups
+    and retrieving the current stock level.
+    """
+    # 1. Robustly retrieve the ingredient name from either capture group (name or name_q)
+    # The first group that holds a value will be used.
+    user_input_name = data.get('name') or data.get('name_q')
+    
+    if not user_input_name:
+        logging.error("Stock check failed: Neither 'name' nor 'name_q' was captured by regex.")
+        return "❌ Input error: Could not identify the ingredient name in your query."
+        
+    user_input_name = user_input_name.strip()
     
     logging.info(f"ACTION: Stock check detected for {user_input_name}.")
 
-    # Resolve name to ingredient record using the robust utility
-    ingredient_record = ingredients._find_ingredient_by_name(user_input_name)
-    
+    # 2. Resolve name to ingredient record using the robust utility
+    # NOTE: The _find_ingredient_by_name utility must be awaited if it performs DB I/O.
+    try:
+        ingredient_record = await ingredients._find_ingredient_by_name(user_input_name)
+    except Exception as e:
+        logging.error(f"DATABASE READ FAILED: Error during stock check lookup for '{user_input_name}'. Exception: {e}")
+        return f"❌ A database error occurred while searching for **{user_input_name}**."
+
     if not ingredient_record:
         logging.warning(f"Stock check failed: Ingredient '{user_input_name}' not found.")
-        return f"❌ Ingredient **{user_input_name}** was not found."
+        return f"❌ Ingredient **{user_input_name}** was not found in inventory."
 
-    # Extract required info for the reply
+    # 3. Extract required info for the reply
+    # Note: Using INGREDIENT_Quantity constant for stock and INGREDIENT_UNIT for unit
     stock = ingredient_record.get(ingredients.INGREDIENT_Quantity, 'N/A')
     unit = ingredient_record.get(ingredients.INGREDIENT_UNIT, 'N/A')
     
