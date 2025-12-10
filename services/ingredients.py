@@ -281,7 +281,7 @@ async def add_new_ingredient(name: str, stock: float, unit: str, cost: float, us
         return "ERROR_SAVE_FAILED"
 
 
-def _find_ingredient_by_name(name: str) -> dict | None:
+async def _find_ingredient_by_name(name: str) -> dict | None:
     """
     Utility function to search for an ingredient record by name (case-insensitive).
     
@@ -595,7 +595,7 @@ async def adjust_ingredient_quantity(name: str, new_quantity: float, user_id: st
     
     # 1. Find the existing ingredient record by name
     try:
-        existing_record = _find_ingredient_by_name(name)
+        existing_record = await _find_ingredient_by_name(name)
     except Exception as e:
         logging.error(f"DATABASE READ FAILED: Error during lookup for '{name}'. Exception: {e}")
         return False
@@ -643,7 +643,7 @@ async def process_ingredient_purchase(name: str, quantity: float, unit: str, tot
     # 1. Attempt to find the ingredient record by its name
     try:
         # Use internal lookup function (assumed to be synchronous)
-        existing_record = _find_ingredient_by_name(name)
+        existing_record = await _find_ingredient_by_name(name)
     except Exception as e:
         # Log critical database error during lookup
         logging.error(f"DATABASE ERROR: Failed to lookup ingredient '{name}'. Exception: {e}", exc_info=True)
