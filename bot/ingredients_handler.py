@@ -2,7 +2,6 @@ from telegram import Update
 from telegram.ext import ContextTypes, ConversationHandler, CommandHandler, MessageHandler, filters
 from services import ingredients 
 import re
-from services import conversion
 from telegram.helpers import escape_markdown
 import logging
 
