@@ -1,6 +1,5 @@
 import uuid
 from datetime import datetime
-from services import conversion
 from sheets import queries # Accesses the sheet read/write functions
 import logging
 
