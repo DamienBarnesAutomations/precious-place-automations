@@ -45,7 +45,7 @@ async def start_recipe_manager_mode(update: Update, context: ContextTypes.DEFAUL
     return RECIPE_MANAGER_MODE # Return RECIPE_MANAGER_MODE
 
 
-async def handle_add_new_recipe(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Optional[int]:
+async def handle_add_new_recipe(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     """
     Handles the ADD RECIPE pattern, extracts data, and calls the service to create the record.
     """
