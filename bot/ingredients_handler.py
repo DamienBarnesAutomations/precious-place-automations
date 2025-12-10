@@ -350,7 +350,7 @@ async def dispatch_nlp_action(update: Update, context: ContextTypes.DEFAULT_TYPE
     Parses the incoming natural language message and calls the appropriate handler function.
     """
     text = update.message.text.strip()
-    user_id = update.effective_user.id
+    user_id = update.effective_user.username
     text = update.message.text.strip()
     reply = ""
 
