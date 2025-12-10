@@ -293,7 +293,7 @@ async def dispatch_nlp_action(update: Update, context: ContextTypes.DEFAULT_TYPE
             reply = await _handle_purchase_action(update, match.groupdict(), user_id)
 
         # 2. Try to match the ADJUST pattern (direct stock replacement)
-        elif match := ADJUST_REGEX.match(text):
+        elif match := ADJUSTMENT_REGEX.match(text):
             # NOTE: Assuming the regex uses named groups 'name', 'quantity', and 'action' (e.g., 'set', 'replace')
             reply = await _handle_adjust_action(update, match.groupdict())
 
