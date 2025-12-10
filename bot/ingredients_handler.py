@@ -370,7 +370,7 @@ async def dispatch_nlp_action(update: Update, context: ContextTypes.DEFAULT_TYPE
     
     "Type <code>STOP</code> to exit Manager Mode."
 )
-)
+
 
     except Exception as e:
         # Catch unexpected errors during regex matching or dispatch
