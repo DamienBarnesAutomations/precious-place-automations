@@ -227,7 +227,7 @@ async def _find_ingredient_by_name(name: str) -> dict | None:
     
     # Safely retrieve all ingredient records from the database sheet
     try:
-        all_ingredients = queries.get_all_records(INGREDIENTS_SHEET)
+        all_ingredients = await queries.get_all_records(INGREDIENTS_SHEET)
     except Exception as e:
         logging.error(f"DATABASE READ FAILED: Could not retrieve all records from {INGREDIENTS_SHEET}. Exception: {e}")
         return None
