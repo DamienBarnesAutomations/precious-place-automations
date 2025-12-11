@@ -414,12 +414,10 @@ async def _handle_stock_adjustment_action(update: Update, data: dict) -> str:
         logging.error(f"Stock adjustment failed for '{user_input_name}'. Error: {message}")
         return f"❌ Failed to adjust stock for {user_input_name}. {message}"
 
-async def handle_unified_status_check(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+async def handle_unified_status_check(update: Update, data: dict) -> None:
     """
     Handles the Unified Status Check pattern (P3.E1).
     """
-    # 1. Retrieve data from regex match
-    data = context.match.groupdict()
     # It attempts to get the name from either the first or second capture group depending on the pattern structure
     ingredient_name = data.get('name', '').strip()
 
@@ -435,6 +433,54 @@ async def handle_unified_status_check(update: Update, context: ContextTypes.DEFA
 
     # Note: This is a standalone check, so no conversation state change is needed.
 
+async def handle_combined_inventory_set(update: Update, data: dict) -> None:
+    """
+    P3.E2: Handles the user's request to simultaneously set a new stock quantity 
+    and a new price, utilizing a single atomic database call.
+    """
+   
+    ingredient_name = data.get('name', '').strip()
+    
+    # --- 1. Determine which set of capture groups contains the actual data ---
+    
+    # Check for the presence of the first pattern's stock group
+    is_stock_first = bool(data.get('stock_quantity'))
+    
+    # 1a. Extract Stock Data
+    stock_qty_str = data.get('stock_quantity' if is_stock_first else 'stock_quantity_2')
+    stock_unit = data.get('stock_unit' if is_stock_first else 'stock_unit_2').strip()
+    
+    # 1b. Extract Price Data
+    price_cost_str = data.get('price_cost' if is_stock_first else 'price_cost_2')
+
+    # 1c. Safety check for mandatory fields
+    if not ingredient_name or not stock_unit:
+        await update.message.reply_text("❌ Input Error: Missing ingredient name or stock unit. Example: `flour stock 15kg price 1.5`")
+        return
+
+    try:
+        # Convert strings to required types
+        stock_qty = float(stock_qty_str)
+        price_cost = float(price_cost_str)
+    except (ValueError, TypeError):
+        await update.message.reply_text("❌ Input Error: Both stock quantity and price must be valid numbers.")
+        return
+
+    user_id = update.effective_user.id
+    logging.info(f"ACTION: Combined inventory set detected for '{ingredient_name}'.")
+
+    # --- 2. Call the SINGLE ATOMIC service function ---
+    # The atomic service handles conversion, single database update, and history logging.
+    success, message = await atomic_combined_update(
+        name=ingredient_name,
+        stock_qty_input=stock_qty,
+        stock_unit_input=stock_unit,
+        price_cost_input=price_cost,
+        user_id=user_id
+    )
+
+    # 3. Final Reply
+    await update.message.reply_html(message)
 
 # --- Main Dispatcher ---
 
