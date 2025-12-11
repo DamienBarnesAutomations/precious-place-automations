@@ -537,7 +537,7 @@ async def handle_stock_usage(update: Update, data: dict) -> None:
     await update.message.reply_html(message)
 
 # P3.E3b: Handle Stock Addition
-async def handle_stock_addition(update: Update, dict data) -> None:
+async def handle_stock_addition(update: Update, data: dict) -> None:
        
     # 1. Extract and Validate Input
     name = data.get('name', '').strip()
