@@ -254,7 +254,7 @@ async def _find_ingredient_by_name(name: str) -> dict | None:
     logging.info(f"LOOKUP COMPLETE: Ingredient with name '{name}' not found.")
     return None
     
-async def calculate_converted_quantity(input_quantity: float, input_unit: str, target_unit: str -> float | None:
+async def calculate_converted_quantity(input_quantity: float, input_unit: str, target_unit: str) -> float | None
     """
     Calculates the quantity equivalent of input_quantity in the target_unit.
     Returns the converted float quantity or None if conversion fails.
@@ -802,3 +802,63 @@ async def get_ingredient_status(ingredient_name: str) -> tuple[bool, str]:
 
     logging.info(f"END GET STATUS SUCCESS: Status retrieved for {name}")
     return True, status_message
+    
+async def adjust_ingredient_stock(name: str, input_quantity: float, input_unit: str, is_addition: bool, user_id: str | int | None = None) -> tuple[bool, str]:
+    """
+    Adjusts the stock level of an ingredient by the given quantity (addition or usage).
+    """
+    action = "ADDITION" if is_addition else "USAGE"
+    logging.info(f"START STOCK {action}: Ing:{name}, Qty:{input_quantity} {input_unit}")
+
+    # 1. Find the existing ingredient record
+    ingredient_record = await find_ingredient_by_name(name) 
+    if not ingredient_record:
+        return False, f"❌ Ingredient **{name}** not found. Cannot adjust stock."
+    
+    i_id = ingredient_record.get(INGREDIENT_ID)
+    current_unit = ingredient_record.get(INGREDIENT_UNIT)
+    
+    try:
+        current_stock = float(ingredient_record.get(STOCK_QUANTITY_KEY, 0.0))
+    except ValueError:
+        logging.error(f"DATA INTEGRITY ERROR: Current stock is not a number for ID {i_id}")
+        return False, f"❌ Data Error: Cannot read current stock for {name}."
+
+    # 2. Calculate the adjustment amount in the ingredient's base unit
+    adjustment_in_base = await calculate_converted_quantity(input_quantity, input_unit, current_unit)
+    
+    if adjustment_in_base is None:
+        return False, f"❌ Conversion Failed: Cannot convert {input_unit} to {current_unit} for adjustment."
+
+    # 3. Calculate the new stock level
+    if is_addition:
+        new_stock = current_stock + adjustment_in_base
+    else:
+        new_stock = current_stock - adjustment_in_base
+        # Optional: Add a check here for negative stock and warn/block if necessary
+
+    # 4. Prepare Atomic Update Data
+    updates = {
+        STOCK_QUANTITY_KEY: f"{new_stock:.4f}",
+    }
+
+    # 5. Execute Single Atomic Update and Log History
+    update_success = False
+    try:
+        update_success = await queries.update_row_by_id(INGREDIENTS_SHEET, i_id, updates, user_id=user_id)
+    except Exception as e:
+        logging.error(f"DATABASE WRITE FAILED: Stock adjustment failed for ID {i_id}. Exception: {e}")
+
+    # 6. Log history only if the atomic update succeeded
+    if update_success:
+        # Log the change to the Stock History sheet (assuming this function exists)
+        await log_stock_history(i_id, new_stock, input_unit, user_id, action) 
+
+        status_word = "Added" if is_addition else "Used"
+        
+        return True, (
+            f"✅ **Stock Updated for {name}**\n"
+            f"{status_word} `{input_quantity:.2f} {input_unit}`. New stock: `{new_stock:.4f} {current_unit}`."
+        )
+    else:
+        return False, f"❌ Failed to execute stock adjustment for {name}."
