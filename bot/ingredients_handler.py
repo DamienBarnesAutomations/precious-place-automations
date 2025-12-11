@@ -426,7 +426,7 @@ async def handle_unified_status_check(update: Update, data: dict) -> None:
         return
 
     # 2. Call the service function
-    success, message = await get_ingredient_status(ingredient_name)
+    success, message = await ingredients.get_ingredient_status(ingredient_name)
 
     # 3. Reply to the user using HTML for rich formatting
     await update.message.reply_html(message)
