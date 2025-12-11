@@ -82,13 +82,12 @@ async def exit_recipe_manager_mode(update: Update, context: ContextTypes.DEFAULT
         return ConversationHandler.END
 
 
-async def handle_add_new_recipe(update: Update, context: ContextTypes.DEFAULT_TYPE) -> str:
+async def handle_add_new_recipe(update: Update, data: dict) -> str:
     """
     Handles the ADD RECIPE pattern, extracts data, and calls the service to create the record.
     """
     # 1. Retrieve data from regex match (assuming the match object is available in context.match)
-    data = context.match.groupdict()
-    
+       
     recipe_name = data.get('name', '').strip()
     yield_unit = data.get('yield_unit', '').strip()
 
@@ -120,7 +119,7 @@ async def handle_add_new_recipe(update: Update, context: ContextTypes.DEFAULT_TY
     # Keep the user in Recipe Manager Mode
     return RECIPE_MANAGER_MODE # Return None to stay in the current state (RECIPE_MANAGER_MODE)
 
-async def handle_add_ingredient_to_recipe(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+async def handle_add_ingredient_to_recipe(update: Update, data: dict) -> int:
     """
     Handles the ADD INGREDIENT pattern, extracts data, and calls the service to link the ingredient.
     """
