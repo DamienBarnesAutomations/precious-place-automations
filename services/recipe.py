@@ -6,7 +6,7 @@ import logging
 from services import ingredients
 
 # Define Sheet and Column Constants (These must be consistent with P7.1.D1)
-RECIPES_MASTER_SHEET = 'Recipes_Master'
+RECIPES_MASTER_SHEET = 'Recipes'
 RECIPE_ID_KEY = 'Recipe_ID'
 RECIPE_NAME_KEY = 'Name'
 RECIPE_YIELD_KEY = 'Yield'
