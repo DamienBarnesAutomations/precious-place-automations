@@ -195,7 +195,7 @@ async def dispatch_nlp_action(update: Update, context: ContextTypes.DEFAULT_TYPE
     await update.message.reply_text(reply, parse_mode="HTML")
     
     # Stay in the manager mode state
-    return INGREDIENT_MANAGER_MODE
+    return RECIPE_MANAGER_MODE
 
 
 
