@@ -42,6 +42,7 @@ async def start_recipe_manager_mode(update: Update, context: ContextTypes.DEFAUL
     """
     Starts the Recipe Manager Mode conversation and sends the welcome message.
     """
+    logging.info(f"User: {update.effective_user}")
     user_id = update.effective_user.username if update.effective_user else None
     logging.info(f"User {user_id} entering Recipe Manager Mode.")
     context.user_data['mode'] = 'RECIPE_MANAGER'
@@ -154,7 +155,8 @@ async def handle_add_ingredient_to_recipe(update: Update, context: ContextTypes.
     return RECIPE_MANAGER_MODE # Stay in Recipe Manager Mode
     
 async def dispatch_nlp_action(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
- text = update.message.text.strip()
+    
+    text = update.message.text.strip()
     user_id = update.effective_user.username
     text = update.message.text.strip()
     reply = ""
