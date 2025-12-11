@@ -787,10 +787,10 @@ async def get_ingredient_status(ingredient_name: str) -> tuple[bool, str]:
     
     # 2. Extract Data (using assumed constants)
     # Using float(0.0) as default for safety
-    name = ingredient_record.get(INGREDIENT_NAME_KEY, "N/A")
-    quantity = float(ingredient_record.get(STOCK_QUANTITY_KEY, 0.0))
-    unit = ingredient_record.get(UNIT_KEY, "unit")
-    last_cost = float(ingredient_record.get(LAST_COST_KEY, 0.0))
+    name = ingredient_record.get(INGREDIENT_NAME, "N/A")
+    quantity = float(ingredient_record.get(INGREDIENT_Quantity, 0.0))
+    unit = ingredient_record.get(INGREDIENT_UNIT, "unit")
+    last_cost = float(ingredient_record.get(INGREDIENT_COST_PER_UNIT, 0.0))
     
     # 3. Format the Output
     status_message = (
