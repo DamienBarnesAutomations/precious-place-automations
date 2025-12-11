@@ -116,6 +116,24 @@ STOCK_ADDITION_REGEX = re.compile(
     r"(?P<name>.+?)$"                           # Capture ingredient name
 )
 
+BUY_REGEX_MODIFIED = re.compile(
+    r"(?i)^(bought|add)\s+"  # Start with "bought" or "add" (case-insensitive)
+    r"(?P<quantity>\d+(\.\d+)?)\s*"  # Capture the quantity (e.g., 5)
+    r"(?P<unit>\w+)?\s*"  # **MODIFIED: Unit is now optional (?); space is optional (*)**
+    r"(?P<name>.+?)\s+for\s+"  # Capture the ingredient name (non-greedy)
+    r"(?:[€$£]\s*)?"  # Optional non-capturing group for currency
+    r"(?P<cost>\d+(\.\d+)?)$"  # Capture the cost
+)
+
+STOCK_USAGE_REGEX_MODIFIED = re.compile(
+    r"(?i)"                                     # Case-insensitive
+    r"^(?:used|consumed|made with)\s+"          # Match action verb
+    r"(?P<quantity>\d+(\.\d+)?)\s*"             # Capture numeric quantity
+    r"(?P<unit>\w+)?\s*"                        # **MODIFIED: Unit is now optional (?); space is optional (*)**
+    r"(?:of\s+)?(the\s+)?\s*?"                  # Optional: (of) or (of the)
+    r"(?P<name>.+?)$"                           # Capture ingredient name
+)
+
 
 STOP_REGEX = re.compile(r'(?i)^STOP$')
 
@@ -396,6 +414,27 @@ async def _handle_stock_adjustment_action(update: Update, data: dict) -> str:
         logging.error(f"Stock adjustment failed for '{user_input_name}'. Error: {message}")
         return f"❌ Failed to adjust stock for {user_input_name}. {message}"
 
+async def handle_unified_status_check(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """
+    Handles the Unified Status Check pattern (P3.E1).
+    """
+    # 1. Retrieve data from regex match
+    data = context.match.groupdict()
+    # It attempts to get the name from either the first or second capture group depending on the pattern structure
+    ingredient_name = data.get('name', '').strip()
+
+    if not ingredient_name:
+        await update.message.reply_text("❌ Input Error: Please specify the ingredient name.")
+        return
+
+    # 2. Call the service function
+    success, message = await get_ingredient_status(ingredient_name)
+
+    # 3. Reply to the user using HTML for rich formatting
+    await update.message.reply_html(message)
+
+    # Note: This is a standalone check, so no conversation state change is needed.
+
 
 # --- Main Dispatcher ---
 
@@ -430,6 +469,9 @@ async def dispatch_nlp_action(update: Update, context: ContextTypes.DEFAULT_TYPE
             
         elif match := SET_STOCK_REGEX.match(text):
             reply = await _handle_stock_set_action(update, match.groupdict())
+        
+        elif match := STATUS_CHECK_REGEX.match(text)
+            reply = await handle_unified_status_check(update, match.groupdict())
         
         elif match := STOP_REGEX.match(text):
             return exit_manager_mode(update)

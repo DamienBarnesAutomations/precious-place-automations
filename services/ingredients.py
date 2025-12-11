@@ -762,3 +762,37 @@ async def revert_last_transaction(user_id: str | int) -> tuple[bool, str]:
     except (ValueError, KeyError) as e:
         logging.error(f"DATA INTEGRITY ERROR: Corrupted log entry ID {last_log.get('Transaction_ID')}. Exception: {e}")
         return False, "History log entry is corrupted. Cannot revert."
+        
+async def get_ingredient_status(ingredient_name: str) -> tuple[bool, str]:
+    """
+    Retrieves and formats the stock and cost status for a given ingredient.
+
+    Returns: (success_bool, status_message)
+    """
+    logging.info(f"START GET STATUS: {ingredient_name}")
+
+    # 1. Find the Ingredient Record
+    # Assuming find_ingredient_by_name uses queries.find_records internally
+    ingredient_record = await find_ingredient_by_name(ingredient_name) 
+
+    if not ingredient_record:
+        logging.warning(f"GET STATUS FAILED: Ingredient '{ingredient_name}' not found.")
+        return False, f"❌ Ingredient **{ingredient_name}** not found in inventory."
+    
+    # 2. Extract Data (using assumed constants)
+    # Using float(0.0) as default for safety
+    name = ingredient_record.get(INGREDIENT_NAME_KEY, "N/A")
+    quantity = float(ingredient_record.get(STOCK_QUANTITY_KEY, 0.0))
+    unit = ingredient_record.get(UNIT_KEY, "unit")
+    last_cost = float(ingredient_record.get(LAST_COST_KEY, 0.0))
+    
+    # 3. Format the Output
+    status_message = (
+        f"🔎 **Status Report: {name}**\n\n"
+        f"📦 **Current Stock:** `{quantity:.2f} {unit}`\n"
+        f"💶 **Last Cost:** `{last_cost:.2f} {unit}` (in Euros, as per memory)\n"
+        "\n_Type `Used X [unit] of Y` or `Bought Z [unit] of Y for C` to update._"
+    )
+
+    logging.info(f"END GET STATUS SUCCESS: Status retrieved for {name}")
+    return True, status_message
