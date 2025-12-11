@@ -124,8 +124,7 @@ async def handle_add_ingredient_to_recipe(update: Update, data: dict) -> int:
     """
     Handles the ADD INGREDIENT pattern, extracts data, and calls the service to link the ingredient.
     """
-    data = context.match.groupdict()
-    
+        
     recipe_name = data.get('recipe_name', '').strip()
     ingredient_name = data.get('ingredient_name', '').strip()
     required_unit = data.get('required_unit', '').strip()
