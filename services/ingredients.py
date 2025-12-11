@@ -313,7 +313,7 @@ async def atomic_combined_update(name: str, stock_qty_input: float, stock_unit_i
 
     # --- 4. Prepare Atomic Update Data ---
     updates = {
-        STOCK_QUANTITY_KEY: f"{new_stock_qty:.4f}",
+        INGREDIENT_Quantity: f"{new_stock_qty:.4f}",
         INGREDIENT_COST_PER_UNIT: f"{new_cost_per_stored_unit:.4f}"
     }
 
@@ -819,7 +819,7 @@ async def adjust_ingredient_stock(name: str, input_quantity: float, input_unit: 
     current_unit = ingredient_record.get(INGREDIENT_UNIT)
     
     try:
-        current_stock = float(ingredient_record.get(STOCK_QUANTITY_KEY, 0.0))
+        current_stock = float(ingredient_record.get(INGREDIENT_Quantity, 0.0))
     except ValueError:
         logging.error(f"DATA INTEGRITY ERROR: Current stock is not a number for ID {i_id}")
         return False, f"❌ Data Error: Cannot read current stock for {name}."
@@ -839,7 +839,7 @@ async def adjust_ingredient_stock(name: str, input_quantity: float, input_unit: 
 
     # 4. Prepare Atomic Update Data
     updates = {
-        STOCK_QUANTITY_KEY: f"{new_stock:.4f}",
+        INGREDIENT_Quantity: f"{new_stock:.4f}",
     }
 
     # 5. Execute Single Atomic Update and Log History
