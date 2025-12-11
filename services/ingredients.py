@@ -290,7 +290,7 @@ async def atomic_combined_update(name: str, stock_qty_input: float, stock_unit_i
     logging.info(f"START ATOMIC UPDATE: Ing:{name}, Stock:{stock_qty_input} {stock_unit_input}, Cost:{price_cost_input} €.")
 
     # 1. Find the existing ingredient record
-    ingredient_record = await find_ingredient_by_name(name) 
+    ingredient_record = await _find_ingredient_by_name(name) 
     if not ingredient_record:
         return False, f"❌ Ingredient **{name}** not found. Cannot update."
     
@@ -779,7 +779,7 @@ async def get_ingredient_status(ingredient_name: str) -> tuple[bool, str]:
 
     # 1. Find the Ingredient Record
     # Assuming find_ingredient_by_name uses queries.find_records internally
-    ingredient_record = await find_ingredient_by_name(ingredient_name) 
+    ingredient_record = await _find_ingredient_by_name(ingredient_name) 
 
     if not ingredient_record:
         logging.warning(f"GET STATUS FAILED: Ingredient '{ingredient_name}' not found.")
@@ -811,7 +811,7 @@ async def adjust_ingredient_stock(name: str, input_quantity: float, input_unit: 
     logging.info(f"START STOCK {action}: Ing:{name}, Qty:{input_quantity} {input_unit}")
 
     # 1. Find the existing ingredient record
-    ingredient_record = await find_ingredient_by_name(name) 
+    ingredient_record = await _find_ingredient_by_name(name) 
     if not ingredient_record:
         return False, f"❌ Ingredient **{name}** not found. Cannot adjust stock."
     
