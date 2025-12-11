@@ -83,7 +83,7 @@ async def add_recipe_component(recipe_name: str, ing_name: str, req_quantity: fl
         # PENDING ENHANCEMENT: Prompt user to create missing ingredient (P7.2.C3.E)
         return False, f"Ingredient **{ing_name}** not found in your inventory. Please add it first."
 
-    ingredient_id = ingredient_record.get(ingredients.INGREDIENT_ID_KEY) # Using existing constant
+    ingredient_id = ingredient_record.get(ingredients.INGREDIENT_ID) # Using existing constant
 
     # 3. Generate Unique Map_ID
     map_id = await queries.get_next_unique_id(MAP_ID_CONFIG_KEY, MAP_ID_PREFIX)
