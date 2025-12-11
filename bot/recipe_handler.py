@@ -83,7 +83,7 @@ async def exit_recipe_manager_mode(update: Update, context: ContextTypes.DEFAULT
         return ConversationHandler.END
 
 
-async def handle_add_new_recipe(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Optional[int]:
+async def handle_add_new_recipe(update: Update, context: ContextTypes.DEFAULT_TYPE) -> str:
     """
     Handles the ADD RECIPE pattern, extracts data, and calls the service to create the record.
     """
@@ -96,12 +96,12 @@ async def handle_add_new_recipe(update: Update, context: ContextTypes.DEFAULT_TY
     try:
         yield_quantity = float(data.get('yield_quantity'))
     except (ValueError, TypeError):
-         await update.message.reply_text("❌ Input Error: The yield quantity must be a valid number.")
-         return RECIPE_MANAGER_MODE
+         return "❌ Input Error: The yield quantity must be a valid number."
+         
     
     if not recipe_name or not yield_unit:
-        await update.message.reply_text("❌ Input Error: Recipe name and yield unit cannot be empty.")
-        return RECIPE_MANAGER_MODE
+        return "❌ Input Error: Recipe name and yield unit cannot be empty."
+        
 
     user_id = update.effective_user.id if update.effective_user else None
     
@@ -134,8 +134,8 @@ async def handle_add_ingredient_to_recipe(update: Update, context: ContextTypes.
     try:
         required_quantity = float(data.get('required_quantity'))
     except (ValueError, TypeError):
-        await update.message.reply_text("❌ Input Error: The required quantity must be a valid number.")
-        return RECIPE_MANAGER_MODE
+        return "❌ Input Error: The required quantity must be a valid number."
+        
     
     user_id = update.effective_user.id if update.effective_user else None
     
@@ -156,7 +156,6 @@ async def handle_add_ingredient_to_recipe(update: Update, context: ContextTypes.
     
 async def dispatch_nlp_action(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     
-    text = update.message.text.strip()
     user_id = update.effective_user.username
     text = update.message.text.strip()
     reply = ""
