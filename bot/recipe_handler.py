@@ -125,7 +125,9 @@ async def handle_add_ingredient_to_recipe(update: Update, context: ContextTypes.
 
 RECIPE_MANAGER_MODE_CONVERSATION_HANDLER = ConversationHandler(
     entry_points=[
-        CommandHandler(r'(?i)^(Manage Recipes)$', start_recipe_manager_mode)
+        MessageHandler(
+            filters.Regex(r'(?i)^(Manage Recipes)$' & ~filters.COMMAND, start_recipe_manager_mode)
+        )
     ],
     states={
         RECIPE_MANAGER_MODE: [
