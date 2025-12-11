@@ -115,7 +115,7 @@ async def handle_add_new_recipe(update: Update, data: dict) -> str:
     )
 
     # 3. Reply to the user
-    await update.message.reply_html(message)
+    return message
 
     # Keep the user in Recipe Manager Mode
     return RECIPE_MANAGER_MODE # Return None to stay in the current state (RECIPE_MANAGER_MODE)
@@ -149,9 +149,9 @@ async def handle_add_ingredient_to_recipe(update: Update, data: dict) -> int:
         user_id=user_id
     )
 
-    await update.message.reply_html(message)
+    return message
 
-    return RECIPE_MANAGER_MODE # Stay in Recipe Manager Mode
+   
     
 async def dispatch_nlp_action(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     
@@ -200,7 +200,7 @@ async def dispatch_nlp_action(update: Update, context: ContextTypes.DEFAULT_TYPE
 RECIPE_MANAGER_MODE_CONVERSATION_HANDLER = ConversationHandler(
     entry_points=[
         MessageHandler(
-            filters.Regex(r'(?i)^(Manage Recipes)$') & ~filters.COMMAND, start_recipe_manager_mode
+            filters.Regex(r'(?i)^(Recipes)$') & ~filters.COMMAND, start_recipe_manager_mode
         )
     ],
     states={
