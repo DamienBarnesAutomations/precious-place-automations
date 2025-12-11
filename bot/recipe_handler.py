@@ -1,5 +1,6 @@
 from telegram import Update
 from telegram.ext import ContextTypes, ConversationHandler, CommandHandler, MessageHandler, filters
+from services import recipe
 import logging
 import re
 
@@ -106,7 +107,7 @@ async def handle_add_new_recipe(update: Update, data: dict) -> str:
     logging.info(f"ACTION: Add Recipe detected for '{recipe_name}'.")
 
     # 2. Call the service function
-    success, message = await create_new_recipe(
+    success, message = await recipe.create_new_recipe(
         name=recipe_name, 
         yield_quantity=yield_quantity, 
         yield_unit=yield_unit, 
@@ -140,7 +141,7 @@ async def handle_add_ingredient_to_recipe(update: Update, data: dict) -> int:
     logging.info(f"ACTION: Add Ingredient to Recipe detected: {recipe_name} -> {required_quantity} {required_unit} {ingredient_name}.")
 
     # Call the service function
-    success, message = await add_recipe_component(
+    success, message = await recipe.add_recipe_component(
         recipe_name=recipe_name,
         ing_name=ingredient_name,
         req_quantity=required_quantity,
