@@ -176,7 +176,7 @@ async def add_new_ingredient(name: str, stock: float, unit: str, cost: float, us
     # 1. Generate and commit the new sequential ID (P3.1.4)
     try:
         # Generate the next available sequential ID (e.g., ING001)
-        new_id = queries.get_next_unique_id(NEXT_ING_ID_KEY, ID_PREFIX)
+        new_id = await queries.get_next_unique_id(NEXT_ING_ID_KEY, ID_PREFIX)
         if not new_id:
             logging.error("ID GENERATION FAILED: _generate_and_commit_new_id returned empty string.")
             return "ERROR_SAVE_FAILED"
