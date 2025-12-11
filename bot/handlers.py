@@ -2,6 +2,7 @@
 
 from telegram import Update
 from telegram.ext import ContextTypes
+import logging
 
 WELCOME_MESSAGE = (
     "👋 <b>Welcome to the Precious Place Bot!</b>\n\n"

@@ -93,10 +93,12 @@ async def handle_add_new_recipe(update: Update, context: ContextTypes.DEFAULT_TY
     try:
         yield_quantity = float(data.get('yield_quantity'))
     except (ValueError, TypeError):
-        return "❌ Input Error: The yield quantity must be a valid number."
+         await update.message.reply_text("❌ Input Error: The yield quantity must be a valid number.")
+         return RECIPE_MANAGER_MODE
     
     if not recipe_name or not yield_unit:
-        return "❌ Input Error: Recipe name and yield unit cannot be empty."
+        await update.message.reply_text("❌ Input Error: Recipe name and yield unit cannot be empty.")
+        return RECIPE_MANAGER_MODE
 
     user_id = update.effective_user.id if update.effective_user else None
     
@@ -129,7 +131,8 @@ async def handle_add_ingredient_to_recipe(update: Update, context: ContextTypes.
     try:
         required_quantity = float(data.get('required_quantity'))
     except (ValueError, TypeError):
-        return "❌ Input Error: The required quantity must be a valid number."
+        await update.message.reply_text("❌ Input Error: The required quantity must be a valid number.")
+        return RECIPE_MANAGER_MODE
     
     user_id = update.effective_user.id if update.effective_user else None
     
