@@ -183,7 +183,7 @@ async def dispatch_nlp_action(update: Update, context: ContextTypes.DEFAULT_TYPE
     
       
     "Type <code>STOP</code> to exit Manager Mode."
-)
+    )
 
 
     except Exception as e:
@@ -198,7 +198,7 @@ async def dispatch_nlp_action(update: Update, context: ContextTypes.DEFAULT_TYPE
     return INGREDIENT_MANAGER_MODE
 
 
-)
+
     
 
 RECIPE_MANAGER_MODE_CONVERSATION_HANDLER = ConversationHandler(
