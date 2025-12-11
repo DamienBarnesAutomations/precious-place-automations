@@ -65,6 +65,8 @@ QUANTITY_CHECK_REGEX = re.compile(
     r"(do\s+i\s+have|is\s+in\s+stock)\?*$"      # Match: do i have / is in stock
 )
 
+STOP_REGEX = re.compile(r'(?i)^STOP$')
+
 INGREDIENTS_MANAGER_WELCOME_MESSAGE = (
     "📝 <b>Ingredients Manager Mode</b>\n\n"
     "<b>Available Actions:</b>\n"
@@ -376,6 +378,10 @@ async def dispatch_nlp_action(update: Update, context: ContextTypes.DEFAULT_TYPE
             
         elif match := SET_STOCK_REGEX.match(text):
             reply = await _handle_stock_set_action(update, match.groupdict())
+        
+        elif match := STOP_REGEX.match(text):
+            return exit_manager_mode(update)
+            
             
         # 5. No match found
         else:

@@ -165,15 +165,13 @@ async def dispatch_nlp_action(update: Update, context: ContextTypes.DEFAULT_TYPE
     try:
         # 1. Try to match the BUY/ADD pattern (handles new/existing purchase logic via service)
         if match := ADD_RECIPE_REGEX.match(text):
-            reply = await handle_add_new_recipe(update, match.groupdict(), user_id)
+            reply = await handle_add_new_recipe(update, match.groupdict())
 
         # 2. Try to match the ADJUST pattern (direct stock replacement)
         elif match := ADD_INGREDIENT_REGEX.match(text):
             # NOTE: Assuming the regex uses named groups 'name', 'quantity', and 'action' (e.g., 'set', 'replace')
             reply = await handle_add_ingredient_to_recipe(update, match.groupdict())
-
-       
-            
+           
         # 5. No match found
         else:
             reply = (
