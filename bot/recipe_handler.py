@@ -1,5 +1,6 @@
 from telegram import Update
 from telegram.ext import ContextTypes, ConversationHandler, CommandHandler, MessageHandler, filters
+from typing import Dict, Any, Optional
 import logging
 import re
 
@@ -37,7 +38,7 @@ ADD_INGREDIENT_REGEX = re.compile(
     r"(?P<ingredient_name>.+?)$"            # Capture ingredient name
 )
 
-async def start_recipe_manager_mode(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+async def start_recipe_manager_mode(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Optional[int]:
     """
     Starts the Recipe Manager Mode conversation and sends the welcome message.
     """
@@ -54,7 +55,7 @@ async def start_recipe_manager_mode(update: Update, context: ContextTypes.DEFAUL
     return RECIPE_MANAGER_MODE # Return RECIPE_MANAGER_MODE
 
 
-async def handle_add_new_recipe(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+async def handle_add_new_recipe(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Optional[int]:
     """
     Handles the ADD RECIPE pattern, extracts data, and calls the service to create the record.
     """
