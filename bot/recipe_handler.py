@@ -89,6 +89,38 @@ async def handle_add_new_recipe(update: Update, context: ContextTypes.DEFAULT_TY
 
     # Keep the user in Recipe Manager Mode
     return None # Return None to stay in the current state (RECIPE_MANAGER_MODE)
+
+async def handle_add_ingredient_to_recipe(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Optional[int]:
+    """
+    Handles the ADD INGREDIENT pattern, extracts data, and calls the service to link the ingredient.
+    """
+    data = context.match.groupdict()
+    
+    recipe_name = data.get('recipe_name', '').strip()
+    ingredient_name = data.get('ingredient_name', '').strip()
+    required_unit = data.get('required_unit', '').strip()
+
+    try:
+        required_quantity = float(data.get('required_quantity'))
+    except (ValueError, TypeError):
+        return "❌ Input Error: The required quantity must be a valid number."
+    
+    user_id = update.effective_user.id if update.effective_user else None
+    
+    logging.info(f"ACTION: Add Ingredient to Recipe detected: {recipe_name} -> {required_quantity} {required_unit} {ingredient_name}.")
+
+    # Call the service function
+    success, message = await add_recipe_component(
+        recipe_name=recipe_name,
+        ing_name=ingredient_name,
+        req_quantity=required_quantity,
+        req_unit=required_unit,
+        user_id=user_id
+    )
+
+    await update.message.reply_html(message)
+
+    return None # Stay in Recipe Manager Mode
     
 
 RECIPE_MANAGER_MODE_CONVERSATION_HANDLER = ConversationHandler(
@@ -102,6 +134,10 @@ RECIPE_MANAGER_MODE_CONVERSATION_HANDLER = ConversationHandler(
             MessageHandler(
                 filters.Regex(recipe_handler.ADD_RECIPE_REGEX), 
                 recipe_handler.handle_add_new_recipe
+            ),
+            MessageHandler(
+                filters.Regex(recipe_handler.ADD_INGREDIENT_REGEX), 
+                recipe_handler.handle_add_ingredient_to_recipe
             ),            
             # Simple STOP handler for now
             MessageHandler(
