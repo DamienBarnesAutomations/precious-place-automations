@@ -54,6 +54,31 @@ async def start_recipe_manager_mode(update: Update, context: ContextTypes.DEFAUL
     # Return the new conversation state
     return RECIPE_MANAGER_MODE # Return RECIPE_MANAGER_MODE
 
+async def exit_recipe_manager_mode(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    """
+    Exits the Recipe Manager Mode conversation flow.
+    """
+    user_id = update.effective_user.username
+
+    logging.info(f"USER {user_id}: Attempting to exit Recipe Manager Mode.")
+
+    try:
+        # 1. Clean up the user data context
+        context.user_data.pop('mode', None)
+        
+        # 2. Send confirmation message
+        await update.message.reply_text("👋 Exited Recipe Manager Mode. Commands like `/add` or `/showstock` are available again.")
+        
+        # 3. Return ConversationHandler.END to terminate the conversation flow
+        logging.info(f"USER {user_id}: Successfully exited Recipe Manager Mode.")
+        return ConversationHandler.END
+        
+    except Exception as e:
+        logging.error(f"USER {user_id}: ERROR exiting Recipe Manager Mode. Exception: {e}")
+        # Even if an error occurs, the mode should terminate to prevent a stuck state
+        await update.message.reply_text("⚠️ There was an issue exiting the mode, but the conversation is being terminated anyway.")
+        return ConversationHandler.END
+
 
 async def handle_add_new_recipe(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Optional[int]:
     """
