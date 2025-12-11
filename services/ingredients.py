@@ -254,7 +254,7 @@ async def _find_ingredient_by_name(name: str) -> dict | None:
     logging.info(f"LOOKUP COMPLETE: Ingredient with name '{name}' not found.")
     return None
     
-async def calculate_converted_quantity(input_quantity: float, input_unit: str, target_unit: str) -> float | None
+async def calculate_converted_quantity(input_quantity: float, input_unit: str, target_unit: str) -> float | None:
     """
     Calculates the quantity equivalent of input_quantity in the target_unit.
     Returns the converted float quantity or None if conversion fails.
