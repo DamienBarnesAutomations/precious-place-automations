@@ -121,7 +121,7 @@ async def log_price_history(ingredient_id: str, old_cost_per_unit: float, new_co
         
         # Append the row to the Price_History sheet. 
         # queries.append_row automatically injects Timestamp and User_ID.
-        success = queries.append_row(PRICE_HISTORY_SHEET, log_data, user_id=user_id)
+        success = await queries.append_row(PRICE_HISTORY_SHEET, log_data, user_id=user_id)
 
         if success:
             # Log successful completion
@@ -204,7 +204,7 @@ async def add_new_ingredient(name: str, stock: float, unit: str, cost: float, us
 
     # 3. Append the data to the Ingredients sheet (P2.6)
     try:
-        if queries.append_row(INGREDIENTS_SHEET, new_ingredient_data, user_id):
+        if await queries.append_row(INGREDIENTS_SHEET, new_ingredient_data, user_id):
             logging.info(f"END ADD: Successfully added new ingredient with ID: {new_id}.")
             return new_id
         else:

@@ -138,25 +138,58 @@ STOCK_USAGE_REGEX_MODIFIED = re.compile(
 STOP_REGEX = re.compile(r'(?i)^STOP$')
 
 INGREDIENTS_MANAGER_WELCOME_MESSAGE = (
-    "📝 <b>Ingredients Manager Mode</b>\n\n"
-    "<b>Available Actions:</b>\n"
+    "🥐 <b>Ingredients Inventory Manager</b>\n\n"
+    "Welcome! The system is now optimized for **quick, fluid commands**.\n\n"
     
-    "• **Record Purchase / Add Stock:** (Updates stock and cost)\n"
-    "  e.g. <b>\"Bought 1 kg Flour for 5\"</b> or <b>\"Add 0.5L Milk for $3.50\"</b>\n\n"
+    "--- <b>Quick Actions (New Fluid Commands)</b> ---\n\n"
     
-    "• **Update Unit Cost:** (Adjusts the ingredient's stored price)\n"
-    "  e.g. <b>\"1 kg Flour is now $5\"</b>\n\n"
+    "1. **Check Status (P3.E1):** View Stock, Unit, and Last Cost.\n"
+    "   e.g. <code>What is the status of Flour?</code>\n\n"
     
-    "• **Check Current Stock:** (Get current inventory level)\n"
-    "  e.g. <b>\"What is the stock of Flour?\"</b> or <b>\"Quantity for Eggs\"</b>\n\n"
+    "2. **Stock Usage (P3.E3):** Decrement stock automatically.\n"
+    "   e.g. <code>Used 50g of sugar</code> or <code>Consumed 2 eggs</code>\n\n"
     
-    "• **Set Stock (Absolute):** (Replaces the current stock total)\n"
-    "  e.g. <b>\"Set Flour stock to 5 kg\"</b>\n\n"
+    "3. **Combined Set (P3.E2):** Update Stock and Price atomically.\n"
+    "   e.g. <code>Flour stock 15kg price 1.25</code>\n\n"
     
-    "• **Adjust Stock (Relative):** (Adds or subtracts from the current total)\n"
-    "  e.g. <b>\"Increase Flour stock by 2 kg\"</b> or <b>\"Decrease butter by 100 g\"</b>\n\n"
+    "--- <b>Standard Actions</b> ---\n\n"
     
-    "Type <code>STOP</code> to exit this mode."
+    "4. **Record Purchase (Buy/Add):** Full purchase transaction.\n"
+    "   e.g. <code>Bought 1 kg Flour for 5</code>\n\n"
+    
+    "5. **Set Stock (Absolute):** Override current stock total.\n"
+    "   e.g. <code>Set Flour stock to 5 kg</code>\n\n"
+    
+    "6. **Price Update:** Update cost per base unit.\n"
+    "   e.g. <code>1 kg Flour is now 5</code>\n\n"
+    
+    "To exit the mode, type <code>STOP</code>."
+)
+
+INGREDIENTS_MANAGER_FALLBACK_MESSAGE = (
+    "🧐 <b>Unrecognized Action.</b>\n\n"
+    "I couldn't match your command to a recognized format. Please try one of the simplified actions below, focusing on the new, fluid commands:\n\n"
+    
+    "--- <b>Quick Actions (Recommended)</b> ---\n\n"
+    
+    "1. **Check Status (P3.E1):** View Stock and Price.\n"
+    "   e.g. <code>What is the status of Flour?</code>\n\n"
+    
+    "2. **Stock Usage (P3.E3):** Tell me what you used.\n"
+    "   e.g. <code>Used 50g of sugar</code>\n\n"
+    
+    "3. **Combined Set (P3.E2):** Update Stock and Price at once.\n"
+    "   e.g. <code>Flour stock 15kg price 1.25</code>\n\n"
+    
+    "--- <b>Standard Actions</b> ---\n\n"
+    
+    "4. **Record Purchase:** (Full Purchase Transaction)\n"
+    "   e.g. <code>Bought 1 kg Flour for 5</code>\n\n"
+    
+    "5. **Set Stock:** (Absolute Override)\n"
+    "   e.g. <code>Set Flour stock to 5 kg</code>\n\n"
+    
+    "Type <code>STOP</code> to exit Manager Mode."
 )
 
 async def enter_manager_mode(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
@@ -482,9 +515,8 @@ async def handle_combined_inventory_set(update: Update, data: dict) -> None:
     # 3. Final Reply
     await update.message.reply_html(message)
     
-async def handle_stock_usage(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    data = context.match.groupdict()
-    
+async def handle_stock_usage(update: Update, data: dict) -> None:
+        
     # 1. Extract and Validate Input
     name = data.get('name', '').strip()
     input_unit = data.get('unit', '').strip() # Note: Using the unit as captured (optional if P3.E6 is integrated)
@@ -505,9 +537,8 @@ async def handle_stock_usage(update: Update, context: ContextTypes.DEFAULT_TYPE)
     await update.message.reply_html(message)
 
 # P3.E3b: Handle Stock Addition
-async def handle_stock_addition(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    data = context.match.groupdict()
-    
+async def handle_stock_addition(update: Update, dict data) -> None:
+       
     # 1. Extract and Validate Input
     name = data.get('name', '').strip()
     input_unit = data.get('unit', '').strip() # Note: Using the unit as captured (optional if P3.E6 is integrated)
@@ -576,25 +607,7 @@ async def dispatch_nlp_action(update: Update, context: ContextTypes.DEFAULT_TYPE
             
         # 5. No match found
         else:
-            reply = (
-    "🧐 <b>Unrecognized Action.</b> Please use one of the following formats:\n\n"
-    "<b>Available Commands:</b>\n"
-    
-    "• **Record Purchase:** <code>Bought 1 kg Flour for 5</code>\n"
-    "  (Also updates stock and cost.)\n\n"
-    
-    "• **Check Stock:** <code>What is the stock of Flour?</code>\n"
-    "  (Or similar natural questions like 'Quantity for Eggs?')\n\n"
-    
-    "• **Set Stock (Absolute):** <code>Set Flour stock to 5 kg</code>\n"
-    "  (Replaces the current stock total.)\n\n"
-    
-    "• **Adjust Stock (Relative):** <code>Increase Flour stock by 2 kg</code>\n"
-    "  (Also works with 'decrease' or 'adjust'.)\n\n"
-    
-    "Type <code>STOP</code> to exit Manager Mode."
-)
-
+            reply = INGREDIENTS_MANAGER_FALLBACK_MESSAGE
 
     except Exception as e:
         # Catch unexpected errors during regex matching or dispatch
