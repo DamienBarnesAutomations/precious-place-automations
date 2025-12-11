@@ -516,7 +516,7 @@ async def dispatch_nlp_action(update: Update, context: ContextTypes.DEFAULT_TYPE
         elif match := SET_STOCK_REGEX.match(text):
             reply = await _handle_stock_set_action(update, match.groupdict())
         
-        elif match := STATUS_CHECK_REGEX.match(text)
+        elif match := STATUS_CHECK_REGEX.match(text):
             reply = await handle_unified_status_check(update, match.groupdict())
         
         elif match := STOP_REGEX.match(text):
