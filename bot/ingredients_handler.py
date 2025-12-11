@@ -481,6 +481,51 @@ async def handle_combined_inventory_set(update: Update, data: dict) -> None:
 
     # 3. Final Reply
     await update.message.reply_html(message)
+    
+async def handle_stock_usage(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    data = context.match.groupdict()
+    
+    # 1. Extract and Validate Input
+    name = data.get('name', '').strip()
+    input_unit = data.get('unit', '').strip() # Note: Using the unit as captured (optional if P3.E6 is integrated)
+    try:
+        input_qty = float(data.get('quantity'))
+    except (ValueError, TypeError):
+        await update.message.reply_text("❌ Input Error: Usage quantity must be a valid number.")
+        return
+
+    # 2. Call Adjustment Service (is_addition=False)
+    success, message = await adjust_ingredient_stock(
+        name=name,
+        input_quantity=input_qty,
+        input_unit=input_unit,
+        is_addition=False,
+        user_id=update.effective_user.id
+    )
+    await update.message.reply_html(message)
+
+# P3.E3b: Handle Stock Addition
+async def handle_stock_addition(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    data = context.match.groupdict()
+    
+    # 1. Extract and Validate Input
+    name = data.get('name', '').strip()
+    input_unit = data.get('unit', '').strip() # Note: Using the unit as captured (optional if P3.E6 is integrated)
+    try:
+        input_qty = float(data.get('quantity'))
+    except (ValueError, TypeError):
+        await update.message.reply_text("❌ Input Error: Addition quantity must be a valid number.")
+        return
+
+    # 2. Call Adjustment Service (is_addition=True)
+    success, message = await adjust_ingredient_stock(
+        name=name,
+        input_quantity=input_qty,
+        input_unit=input_unit,
+        is_addition=True,
+        user_id=update.effective_user.id
+    )
+    await update.message.reply_html(message)
 
 # --- Main Dispatcher ---
 
@@ -519,6 +564,12 @@ async def dispatch_nlp_action(update: Update, context: ContextTypes.DEFAULT_TYPE
         elif match := STATUS_CHECK_REGEX.match(text):
             reply = await handle_unified_status_check(update, match.groupdict())
         
+        elif match := STOCK_USAGE_REGEX_MODIFIED.match(text):
+            reply = await handle_stock_usage(update, match.groupdict())
+            
+        elif match := STOCK_ADDITION_REGEX.match(text):
+            reply = await handle_stock_addition(update, match.groupdict())
+            
         elif match := STOP_REGEX.match(text):
             return exit_manager_mode(update)
             
