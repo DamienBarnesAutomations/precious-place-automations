@@ -136,11 +136,11 @@ RECIPE_MANAGER_MODE_CONVERSATION_HANDLER = ConversationHandler(
             # MessageHandler(filters.TEXT & ~filters.COMMAND, recipe_handler.handle_recipe_input),
             MessageHandler(
                 filters.Regex(recipe_handler.ADD_RECIPE_REGEX), 
-                recipe_handler.handle_add_new_recipe
+                handle_add_new_recipe
             ),
             MessageHandler(
                 filters.Regex(recipe_handler.ADD_INGREDIENT_REGEX), 
-                recipe_handler.handle_add_ingredient_to_recipe
+                handle_add_ingredient_to_recipe
             ),            
             # Simple STOP handler for now
             MessageHandler(
