@@ -10,9 +10,9 @@ WELCOME_MESSAGE = (
     "Enter the different modes with the commands below.\n\n"
     
     "<b>📝 Available Modes</b>\n"
-    "• <b>Manage Ingredients:</b> <code>/manageingredients</code> Track inventory, purchases, and prices.\n"
-    "• <b>Manage Recipes:</b> <code>/managerecipes</code> Create, cost, and plan your production recipes. <b>(In Development)</b>\n"
-    "• <b>Manage Cash Flow:</b> <code>/managecash</code> (Future: Track sales and expenses.)\n\n"
+    "• <b>Manage Ingredients:</b> Track inventory, purchases, and prices.\n"
+    "• <b>Manage Recipes:</b> Create, cost, and plan your production recipes. <b>(In Development)</b>\n"
+    "• <b>Manage Cash Flow:</b> (Future: Track sales and expenses.)\n\n"
     
     "<b>💬 Global Commands</b>\n"
     "Type <code>/stop</code> to exit any mode and return here.\n"

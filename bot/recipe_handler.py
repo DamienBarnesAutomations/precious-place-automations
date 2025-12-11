@@ -44,6 +44,8 @@ async def start_recipe_manager_mode(update: Update, context: ContextTypes.DEFAUL
     """
     user_id = update.effective_user.username if update.effective_user else None
     logging.info(f"User {user_id} entering Recipe Manager Mode.")
+    context.user_data['mode'] = 'RECIPE_MANAGER'
+
     
     # Send the welcome message using HTML for formatting
     await update.message.reply_html(
@@ -116,7 +118,7 @@ async def handle_add_new_recipe(update: Update, context: ContextTypes.DEFAULT_TY
     await update.message.reply_html(message)
 
     # Keep the user in Recipe Manager Mode
-    return None # Return None to stay in the current state (RECIPE_MANAGER_MODE)
+    return RECIPE_MANAGER_MODE # Return None to stay in the current state (RECIPE_MANAGER_MODE)
 
 async def handle_add_ingredient_to_recipe(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Optional[int]:
     """
@@ -149,7 +151,52 @@ async def handle_add_ingredient_to_recipe(update: Update, context: ContextTypes.
 
     await update.message.reply_html(message)
 
-    return None # Stay in Recipe Manager Mode
+    return RECIPE_MANAGER_MODE # Stay in Recipe Manager Mode
+    
+async def dispatch_nlp_action(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+ text = update.message.text.strip()
+    user_id = update.effective_user.username
+    text = update.message.text.strip()
+    reply = ""
+
+    logging.debug(f"USER {user_id} - DISPATCH: Received message '{text}'")
+
+    try:
+        # 1. Try to match the BUY/ADD pattern (handles new/existing purchase logic via service)
+        if match := ADD_RECIPE_REGEX.match(text):
+            reply = await handle_add_new_recipe(update, match.groupdict(), user_id)
+
+        # 2. Try to match the ADJUST pattern (direct stock replacement)
+        elif match := ADD_INGREDIENT_REGEX.match(text):
+            # NOTE: Assuming the regex uses named groups 'name', 'quantity', and 'action' (e.g., 'set', 'replace')
+            reply = await handle_add_ingredient_to_recipe(update, match.groupdict())
+
+       
+            
+        # 5. No match found
+        else:
+            reply = (
+    "🧐 <b>Unrecognized Action.</b> Please use one of the following formats:\n\n"
+    "<b>Available Commands:</b>\n"
+    
+      
+    "Type <code>STOP</code> to exit Manager Mode."
+)
+
+
+    except Exception as e:
+        # Catch unexpected errors during regex matching or dispatch
+        logging.critical(f"USER {user_id} - CRITICAL DISPATCH ERROR for message '{text}'. Exception: {e}", exc_info=True)
+        reply = "💥 A critical system error occurred while processing your request. Please inform the system administrator."
+
+    # Send the final reply
+    await update.message.reply_text(reply, parse_mode="HTML")
+    
+    # Stay in the manager mode state
+    return INGREDIENT_MANAGER_MODE
+
+
+)
     
 
 RECIPE_MANAGER_MODE_CONVERSATION_HANDLER = ConversationHandler(
@@ -162,19 +209,8 @@ RECIPE_MANAGER_MODE_CONVERSATION_HANDLER = ConversationHandler(
         RECIPE_MANAGER_MODE: [
             # Handlers for P7.2.C2, P7.2.C3, P7.3.A1, etc., will go here
             # MessageHandler(filters.TEXT & ~filters.COMMAND, recipe_handler.handle_recipe_input),
-            MessageHandler(
-                filters.Regex(ADD_RECIPE_REGEX), 
-                handle_add_new_recipe
-            ),
-            MessageHandler(
-                filters.Regex(ADD_INGREDIENT_REGEX), 
-                handle_add_ingredient_to_recipe
-            ),            
-            # Simple STOP handler for now
-            MessageHandler(
-                filters.Regex(r'(?i)^STOP$'), 
-                lambda update, context: ConversationHandler.END
-            ),
+            MessageHandler(filters.TEXT & ~filters.COMMAND, dispatch_nlp_action)
+           
         ]
     },
     fallbacks=[MessageHandler(filters.Regex(r'(?i)^STOP$'), exit_recipe_manager_mode)],

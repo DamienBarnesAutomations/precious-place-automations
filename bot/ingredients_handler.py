@@ -6,7 +6,7 @@ import logging
 
 # --- Conversation States ---
 
-INGREDIENT_MANAGER_MODE = 1 # State ID 7
+INGREDIENT_MANAGER_MODE = 2 # State ID 7
 
 
 # --- Regular Expressions for NLP Actions  ---
