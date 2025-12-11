@@ -504,7 +504,7 @@ async def handle_combined_inventory_set(update: Update, data: dict) -> None:
 
     # --- 2. Call the SINGLE ATOMIC service function ---
     # The atomic service handles conversion, single database update, and history logging.
-    success, message = await atomic_combined_update(
+    success, message = await ingredients.atomic_combined_update(
         name=ingredient_name,
         stock_qty_input=stock_qty,
         stock_unit_input=stock_unit,
@@ -527,7 +527,7 @@ async def handle_stock_usage(update: Update, data: dict) -> None:
         return
 
     # 2. Call Adjustment Service (is_addition=False)
-    success, message = await adjust_ingredient_stock(
+    success, message = await ingredients.adjust_ingredient_stock(
         name=name,
         input_quantity=input_qty,
         input_unit=input_unit,
@@ -600,9 +600,14 @@ async def dispatch_nlp_action(update: Update, context: ContextTypes.DEFAULT_TYPE
             
         elif match := STOCK_ADDITION_REGEX.match(text):
             reply = await handle_stock_addition(update, match.groupdict())
+        
+        elif match := COMBINED_UPDATE_REGEX.match(text):
+            reply = await handle_combined_inventory_set(update, match.groupdict())
             
         elif match := STOP_REGEX.match(text):
             return exit_manager_mode(update)
+            
+            
             
             
         # 5. No match found
