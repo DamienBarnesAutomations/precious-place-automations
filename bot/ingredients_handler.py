@@ -65,6 +65,58 @@ QUANTITY_CHECK_REGEX = re.compile(
     r"(do\s+i\s+have|is\s+in\s+stock)\?*$"      # Match: do i have / is in stock
 )
 
+STATUS_CHECK_REGEX = re.compile(
+    r"(?i)"                                     # Case-insensitive
+    r"(\s*^(what(\'s| is)|tell me)?\s+)"        # Optional start: (what is / tell me)
+    r"(?:the\s+)?(status|info|details|about)\s+" # Match key phrase: status/info/details/about
+    r"(?:of|for|on)\s+"                         # Match preposition: of / for / on
+    r"(?P<name>.+?)\?*$"                        # Capture: Name, optional trailing question mark
+)
+
+COMBINED_UPDATE_REGEX = re.compile(
+    r"(?i)"                                     # Case-insensitive
+    r"^(?:update\s+)?\s*?"                      # Optional start: (update)
+    r"(?P<name>.+?)\s+"                         # Capture ingredient name (non-greedy)
+    r"(?:"                                      # START Non-Capturing Group for combined updates
+        r"(?:stock|quantity)\s*"                # Match keyword: stock or quantity
+        r"(?P<stock_quantity>\d+(\.\d+)?)\s*"   # Capture stock quantity
+        r"(?P<stock_unit>\w+)\s*"               # Capture stock unit
+        r"(?:and\s+)?\s*"                       # Optional "and"
+        r"(?:price|cost)\s*"                    # Match keyword: price or cost
+        r"(?:[€$£]\s*)?"                        # Optional currency symbol
+        r"(?P<price_cost>\d+(\.\d+)?)"          # Capture the new price
+    r"|"                                        # OR (Allow Price then Stock order)
+        r"(?:price|cost)\s*"                    # Match keyword: price or cost
+        r"(?:[€$£]\s*)?"                        # Optional currency symbol
+        r"(?P<price_cost_2>\d+(\.\d+)?)\s*"     # Capture the new price (2)
+        r"(?:and\s+)?\s*"                       # Optional "and"
+        r"(?:stock|quantity)\s*"                # Match keyword: stock or quantity
+        r"(?P<stock_quantity_2>\d+(\.\d+)?)\s*" # Capture stock quantity (2)
+        r"(?P<stock_unit_2>\w+)"                # Capture stock unit (2)
+    r")$"                                       # END Non-Capturing Group
+)
+
+STOCK_USAGE_REGEX = re.compile(
+    r"(?i)"                                     # Case-insensitive
+    r"^(?:used|consumed|made with)\s+"          # Match action verb (used/consumed/made with)
+    r"(?P<quantity>\d+(\.\d+)?)\s*"             # Capture numeric quantity
+    r"(?P<unit>\w+)\s+"                         # Capture unit
+    r"(?:of\s+)?(the\s+)?\s*?"                  # Optional: (of) or (of the)
+    r"(?P<name>.+?)$"                           # Capture ingredient name
+)
+
+# P3.E3b: CONTEXTUAL STOCK ADDITION
+# Examples: "Added 10kg flour", "Put in 5L of milk"
+STOCK_ADDITION_REGEX = re.compile(
+    r"(?i)"                                     # Case-insensitive
+    r"^(?:added|put in|restocked)\s+"           # Match action verb (added/put in/restocked)
+    r"(?P<quantity>\d+(\.\d+)?)\s*"             # Capture numeric quantity
+    r"(?P<unit>\w+)\s+"                         # Capture unit
+    r"(?:of\s+)?(the\s+)?\s*?"                  # Optional: (of) or (of the)
+    r"(?P<name>.+?)$"                           # Capture ingredient name
+)
+
+
 STOP_REGEX = re.compile(r'(?i)^STOP$')
 
 INGREDIENTS_MANAGER_WELCOME_MESSAGE = (
