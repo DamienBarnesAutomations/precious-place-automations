@@ -77,7 +77,7 @@ async def add_recipe_component(recipe_name: str, ing_name: str, req_quantity: fl
 
     # 2. Find the Ingredient_ID
     # Uses the existing utility from Phase 3
-    ingredient_record = await ingredients.find_ingredient_by_name(ing_name)
+    ingredient_record = await ingredients._find_ingredient_by_name(ing_name)
 
     if not ingredient_record:
         # PENDING ENHANCEMENT: Prompt user to create missing ingredient (P7.2.C3.E)
