@@ -15,7 +15,7 @@ PRICE_HISTORY_SHEET = "Price_History"
 INGREDIENT_ID = 'ID'
 INGREDIENT_NAME = 'Name'
 INGREDIENT_UNIT = 'Unit'
-INGREDIENT_Quantity = 'Quantity'
+INGREDIENT_QUANTITY = 'Quantity'
 INGREDIENT_COST_PER_UNIT = 'Cost Per Unit'
 
 #UNITS TABLE COLUMNS
@@ -190,7 +190,7 @@ async def add_new_ingredient(name: str, stock: float, unit: str, cost: float, us
         new_ingredient_data = {
             INGREDIENT_ID: new_id,
             INGREDIENT_NAME: name,
-            INGREDIENT_Quantity: f"{stock:.4f}", # Format floats for consistent sheet storage
+            INGREDIENT_QUANTITY: f"{stock:.4f}", # Format floats for consistent sheet storage
             INGREDIENT_UNIT: unit,
             INGREDIENT_COST_PER_UNIT: f"{cost:.4f}", # Use the calculated unit cost
             
@@ -313,7 +313,7 @@ async def atomic_combined_update(name: str, stock_qty_input: float, stock_unit_i
 
     # --- 4. Prepare Atomic Update Data ---
     updates = {
-        INGREDIENT_Quantity: f"{new_stock_qty:.4f}",
+        INGREDIENT_QUANTITY: f"{new_stock_qty:.4f}",
         INGREDIENT_COST_PER_UNIT: f"{new_cost_per_stored_unit:.4f}"
     }
 
@@ -436,7 +436,7 @@ async def set_ingredient_stock(name: str, input_quantity: float, input_unit: str
     try:
         i_id = ingredient[INGREDIENT_ID]
         current_unit = ingredient[INGREDIENT_UNIT]
-        current_quantity = float(ingredient.get(INGREDIENT_Quantity, 0.0))
+        current_quantity = float(ingredient.get(INGREDIENT_QUANTITY, 0.0))
     except (KeyError, ValueError, TypeError) as e:
         logging.error(f"DATA INTEGRITY ERROR: Cannot read required fields for ID {i_id}. Exception: {e}")
         return False, "Database error: Corrupted ingredient data."
@@ -469,7 +469,7 @@ async def set_ingredient_stock(name: str, input_quantity: float, input_unit: str
     # 4. Update the 'Ingredients' sheet
     updates = {
         # Set the stock to the calculated absolute value (after conversion)
-        INGREDIENT_Quantity: f"{new_quantity_in_stored_unit:.4f}"
+        INGREDIENT_QUANTITY: f"{new_quantity_in_stored_unit:.4f}"
     }
     
     try:
@@ -510,7 +510,7 @@ async def adjust_ingredient_stock(name: str, action: str, input_quantity: float,
         i_id = ingredient[INGREDIENT_ID]
         current_unit = ingredient[INGREDIENT_UNIT]
         # Get current quantity to calculate the new stock
-        current_quantity = float(ingredient.get(INGREDIENT_Quantity, 0.0))
+        current_quantity = float(ingredient.get(INGREDIENT_QUANTITY, 0.0))
     except (KeyError, ValueError, TypeError) as e:
         logging.error(f"DATA INTEGRITY ERROR: Cannot read required fields for ID {i_id}. Exception: {e}")
         return False, "Database error: Corrupted ingredient data."
@@ -555,7 +555,7 @@ async def adjust_ingredient_stock(name: str, action: str, input_quantity: float,
     # 6. Update the 'Ingredients' sheet
     updates = {
         # Set the stock to the calculated relative value
-        INGREDIENT_Quantity: f"{new_quantity:.4f}"
+        INGREDIENT_QUANTITY: f"{new_quantity:.4f}"
     }
     
     try:
@@ -608,7 +608,7 @@ async def process_ingredient_purchase(name: str, quantity: float, unit: str, tot
             # Safely extract and convert existing inventory values
             ingredient_id = existing_record[INGREDIENT_ID]
             current_unit_cost = float(existing_record[INGREDIENT_COST_PER_UNIT])
-            current_quantity = float(existing_record[INGREDIENT_Quantity])
+            current_quantity = float(existing_record[INGREDIENT_QUANTITY])
             current_unit = existing_record[INGREDIENT_UNIT]
         except (ValueError, KeyError) as e:
             # Log data integrity issue if required fields are missing or corrupted
@@ -647,7 +647,7 @@ async def process_ingredient_purchase(name: str, quantity: float, unit: str, tot
         # Calculate the new total stock quantity
         new_quantity = current_quantity + converted_quantity
         # Format as string for consistent sheet storage
-        updates[INGREDIENT_Quantity] = f"{new_quantity:.4f}" 
+        updates[INGREDIENT_QUANTITY] = f"{new_quantity:.4f}" 
         
         # --- Price Update Logic (Conditional) ---
         # Calculate the unit cost of the new purchase in the stored unit
@@ -788,7 +788,7 @@ async def get_ingredient_status(ingredient_name: str) -> tuple[bool, str]:
     # 2. Extract Data (using assumed constants)
     # Using float(0.0) as default for safety
     name = ingredient_record.get(INGREDIENT_NAME, "N/A")
-    quantity = float(ingredient_record.get(INGREDIENT_Quantity, 0.0))
+    quantity = float(ingredient_record.get(INGREDIENT_QUANTITY, 0.0))
     unit = ingredient_record.get(INGREDIENT_UNIT, "unit")
     last_cost = float(ingredient_record.get(INGREDIENT_COST_PER_UNIT, 0.0))
     
@@ -819,7 +819,7 @@ async def adjust_ingredient_stock(name: str, input_quantity: float, input_unit: 
     current_unit = ingredient_record.get(INGREDIENT_UNIT)
     
     try:
-        current_stock = float(ingredient_record.get(INGREDIENT_Quantity, 0.0))
+        current_stock = float(ingredient_record.get(INGREDIENT_QUANTITY, 0.0))
     except ValueError:
         logging.error(f"DATA INTEGRITY ERROR: Current stock is not a number for ID {i_id}")
         return False, f"❌ Data Error: Cannot read current stock for {name}."
@@ -839,7 +839,7 @@ async def adjust_ingredient_stock(name: str, input_quantity: float, input_unit: 
 
     # 4. Prepare Atomic Update Data
     updates = {
-        INGREDIENT_Quantity: f"{new_stock:.4f}",
+        INGREDIENT_QUANTITY: f"{new_stock:.4f}",
     }
 
     # 5. Execute Single Atomic Update and Log History
@@ -887,8 +887,8 @@ async def generate_full_inventory_report() -> tuple[bool, str]:
     for record in sorted_records:
         name = record.get(INGREDIENT_NAME, "N/A")
         try:
-            quantity = float(record.get(INGREDIENT_Quantity, 0.0))
-            unit = record.get(UNIT_KEY, "unit")
+            quantity = float(record.get(INGREDIENT_QUANTITY, 0.0))
+            unit = record.get(INGREDIENT_UNIT, "unit")
             cost_per_unit = float(record.get(INGREDIENT_COST_PER_UNIT, 0.0))
             
             
