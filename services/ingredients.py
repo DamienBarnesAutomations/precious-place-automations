@@ -511,7 +511,7 @@ async def adjust_ingredient_stock(name: str, action: str, input_quantity: float,
         logging.error(f"DATA INTEGRITY ERROR: Cannot read required fields for ID {i_id}. Exception: {e}")
         return False, "Database error: Corrupted ingredient data."
 
-    if not input_unit.strip() or input_unit == '':
+    if input_unit.strip() == '':
         # The stored unit is the most reliable guess when the user omits the unit.
         input_unit = current_unit
         logging.info(f"P3.E6 GUESS APPLIED: Missing input unit defaulted to stored unit '{input_unit}'.")
