@@ -511,7 +511,10 @@ async def adjust_ingredient_stock(name: str, action: str, input_quantity: float,
         logging.error(f"DATA INTEGRITY ERROR: Cannot read required fields for ID {i_id}. Exception: {e}")
         return False, "Database error: Corrupted ingredient data."
 
-    # 3. Calculate the adjustment amount in the STORED unit
+    if not input_unit.strip():
+        # The stored unit is the most reliable guess when the user omits the unit.
+        input_unit = current_unit
+        logging.info(f"P3.E6 GUESS APPLIED: Missing input unit defaulted to stored unit '{input_unit}'.")
     
     # 3a. Convert input quantity to stored unit
     adjustment_amount_in_stored_unit = input_quantity
@@ -790,7 +793,7 @@ async def get_ingredient_status(ingredient_name: str) -> tuple[bool, str]:
     
     # 3. Format the Output
     status_message = (
-        f"📦 **Current Stock:** {quantity:.2f} {unit} ({last_cost})\n"
+        f"📦 **Current Stock:** {quantity:.2f} {unit} (${last_cost})\n"
                
     )
 

@@ -96,15 +96,6 @@ COMBINED_UPDATE_REGEX = re.compile(
     r")$"                                       # END Non-Capturing Group
 )
 
-STOCK_USAGE_REGEX = re.compile(
-    r"(?i)"                                     # Case-insensitive
-    r"^(?:used|consumed|made with)\s+"          # Match action verb (used/consumed/made with)
-    r"(?P<quantity>\d+(\.\d+)?)\s*"             # Capture numeric quantity
-    r"(?P<unit>\w+)\s+"                         # Capture unit
-    r"(?:of\s+)?(the\s+)?\s*?"                  # Optional: (of) or (of the)
-    r"(?P<name>.+?)$"                           # Capture ingredient name
-)
-
 # P3.E3b: CONTEXTUAL STOCK ADDITION
 # Examples: "Added 10kg flour", "Put in 5L of milk"
 STOCK_ADDITION_REGEX = re.compile(
@@ -190,9 +181,7 @@ INGREDIENTS_MANAGER_FALLBACK_MESSAGE = (
     
     "3. **Combined Set:** Update Stock and Price atomically.\n"
     "   e.g. <code>Flour stock 15kg price 1.25</code>\n\n"
-    
-    "--- <b>Standard Actions</b> ---\n\n"
-    
+        
     "4. **Record Purchase (Buy/Add):** Full purchase transaction.\n"
     "   e.g. <code>Bought 1 kg Flour for 5</code>\n\n"
     
@@ -565,7 +554,7 @@ async def handle_stock_addition(update: Update, data: dict) -> None:
         return
 
     # 2. Call Adjustment Service (is_addition=True)
-    success, message = await adjust_ingredient_stock(
+    success, message = await ingredients.adjust_ingredient_stock(
         name=name,
         input_quantity=input_qty,
         input_unit=input_unit,
