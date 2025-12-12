@@ -117,12 +117,14 @@ BUY_REGEX_MODIFIED = re.compile(
 )
 
 STOCK_USAGE_REGEX_MODIFIED = re.compile(
-    r"(?i)"                                     # Case-insensitive
-    r"^(?:used|consumed|made with)\s+"          # Match action verb
-    r"(?P<quantity>\d+(\.\d+)?)\s*"             # Capture numeric quantity
-    r"(?P<unit>\w+)?\s*"                        # **MODIFIED: Unit is now optional (?); space is optional (*)**
-    r"(?:of\s+)?(the\s+)?\s*?"                  # Optional: (of) or (of the)
-    r"(?P<name>.+?)$"                           # Capture ingredient name
+    r"(?i)"                                       # Case-insensitive
+    r"^(?:used|consumed|made with)\s+"            # Match action verb
+    r"(?P<quantity>\d+(\.\d+)?)\s*"               # Capture numeric quantity
+   
+    r"(?P<unit>(?!(of|the)\s+)\w+)?\s*"           # Capture optional unit (unit=="" if 'of' follows)
+    
+    r"(?:of\s+)?(the\s+)?\s*?"                    # Optional preposition/article group
+    r"(?P<name>.+?)$"                             # Capture ingredient name
 )
 
 INVENTORY_REPORT_REGEX = re.compile(
