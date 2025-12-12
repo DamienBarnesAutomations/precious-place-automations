@@ -329,10 +329,6 @@ async def atomic_combined_update(name: str, stock_qty_input: float, stock_unit_i
     # 6. Log history only if the atomic update succeeded
     if update_success:
         # Log the change to the Price History sheet
-        await log_price_history(i_id, old_price, new_cost_per_stored_unit, user_id)
-        # Log the change to the Stock History sheet (assuming this function exists)
-        await log_stock_history(i_id, new_stock_qty, stock_unit_input, user_id, "COMBINED_SET") 
-
         return True, (
             f"✅ **Atomic Update Success for {name}**\n"
             f"📦 Stock set to: `{new_stock_qty:.4f} {current_unit}`\n"
@@ -794,10 +790,8 @@ async def get_ingredient_status(ingredient_name: str) -> tuple[bool, str]:
     
     # 3. Format the Output
     status_message = (
-        f"🔎 **Status Report: {name}**\n\n"
-        f"📦 **Current Stock:** `{quantity:.2f} {unit}`\n"
-        f"💶 **Last Cost:** `{last_cost:.2f} {unit}` (in Euros, as per memory)\n"
-        "\n_Type `Used X [unit] of Y` or `Bought Z [unit] of Y for C` to update._"
+        f"📦 **Current Stock:** {quantity:.2f} {unit} ({last_cost})\n"
+               
     )
 
     logging.info(f"END GET STATUS SUCCESS: Status retrieved for {name}")
