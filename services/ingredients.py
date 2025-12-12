@@ -845,9 +845,6 @@ async def adjust_ingredient_stock(name: str, input_quantity: float, input_unit: 
 
     # 6. Log history only if the atomic update succeeded
     if update_success:
-        # Log the change to the Stock History sheet (assuming this function exists)
-        await log_stock_history(i_id, new_stock, input_unit, user_id, action) 
-
         status_word = "Added" if is_addition else "Used"
         
         return True, (
@@ -888,7 +885,7 @@ async def generate_full_inventory_report() -> tuple[bool, str]:
             
             # Format line: Name | Stock | Value
             report_lines.append(
-                f"• **{name}**: `{quantity:.2f} {unit}` (${cost_per_unit:.2f})"
+                f"• **{name}**: {quantity:.2f} {unit} (${cost_per_unit:.2f})"
             )
         except (ValueError, TypeError) as e:
             logging.warning(f"Skipping malformed ingredient record for {name}: {e}")
