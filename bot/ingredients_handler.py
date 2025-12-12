@@ -365,8 +365,8 @@ async def _handle_stock_check_action(update: Update, data: dict) -> str:
         return f"❌ Ingredient **{user_input_name}** was not found in inventory."
 
     # 3. Extract required info for the reply
-    # Note: Using INGREDIENT_Quantity constant for stock and INGREDIENT_UNIT for unit
-    stock = ingredient_record.get(ingredients.INGREDIENT_Quantity, 'N/A')
+    # Note: Using INGREDIENT_QUANTITY constant for stock and INGREDIENT_UNIT for unit
+    stock = ingredient_record.get(ingredients.INGREDIENT_QUANTITY, 'N/A')
     unit = ingredient_record.get(ingredients.INGREDIENT_UNIT, 'N/A')
     
     return (
