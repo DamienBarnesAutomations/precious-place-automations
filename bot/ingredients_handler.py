@@ -438,7 +438,7 @@ async def _handle_stock_adjustment_action(update: Update, data: dict) -> str:
     logging.info(f"ACTION: Stock adjustment detected for {user_input_name}: {action} by {input_quantity} {input_unit} (User: {user_id}).")
     
     action_clean = action.strip().lower()
-    logging.info(f"START ADJUST STOCK: {action_clean} stock for '{name}' by {input_quantity} {input_unit} (User: {user_id}).")
+    logging.info(f"START ADJUST STOCK: {action_clean} stock for '{user_input_name}' by {input_quantity} {input_unit} (User: {user_id}).")
     
     if action_clean in ['increase', 'add']:
         is_addition = True
