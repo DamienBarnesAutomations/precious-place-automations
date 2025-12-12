@@ -871,8 +871,8 @@ async def generate_full_inventory_report() -> tuple[bool, str]:
     logging.info("START FULL INVENTORY REPORT GENERATION.")
 
     # 1. Fetch All Ingredient Records
-    # Assuming queries.fetch_all_records(sheet_name) exists
-    all_records = await queries.fetch_all_records(INGREDIENTS_SHEET) 
+    # Assuming queries.get_all_records(sheet_name) exists
+    all_records = await queries.get_all_records(INGREDIENTS_SHEET) 
 
     if not all_records:
         return False, "⚠️ **Inventory is Empty.** Please use the **Record Purchase** command to add ingredients."
