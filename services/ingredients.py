@@ -879,7 +879,7 @@ async def generate_full_inventory_report() -> tuple[bool, str]:
     
     # 2. Sort and Format Data
     # Sort by ingredient name for better readability
-    sorted_records = sorted(all_records, key=lambda r: r.get(INGREDIENT_NAME_KEY, "").lower())
+    sorted_records = sorted(all_records, key=lambda r: r.get(INGREDIENT_NAME, "").lower())
 
     report_lines = []
     total_value = 0.0
