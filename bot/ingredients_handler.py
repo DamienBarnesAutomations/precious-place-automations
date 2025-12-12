@@ -453,7 +453,7 @@ async def _handle_stock_adjustment_action(update: Update, data: dict) -> str:
         name=user_input_name,
         input_quantity=input_quantity,
         input_unit=input_unit,
-        is_addition= is_addition
+        is_addition= is_addition,
         user_id=user_id
     )
 
