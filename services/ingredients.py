@@ -292,7 +292,7 @@ async def atomic_combined_update(name: str, stock_qty_input: float, stock_unit_i
     logging.info(f"START ATOMIC SET: Ing:{name}, Stock:{stock_qty_input} {stock_unit_input}, Price/Unit:{price_cost_input} €/{stock_unit_input}.")
 
     # 1. Find the existing ingredient record
-    ingredient_record = await _find_ingredient_by_name(name) 
+    ingredient_record = await _find_ingredient_by_name(name)
     if not ingredient_record:
         return False, f"❌ Ingredient **{name}** not found. Cannot update."
     
@@ -301,29 +301,24 @@ async def atomic_combined_update(name: str, stock_qty_input: float, stock_unit_i
     old_price = float(ingredient_record.get(INGREDIENT_COST_PER_UNIT, 0.0)) # For history logging later
 
     # --- 2. Calculate New Stock Quantity (Absolute Set) ---
-    # Convert input stock quantity (15 kg) to base unit (e.g., 15000 g)
+    # Convert input stock quantity (e.g., 15 kg) to base unit (e.g., 15000 g)
     new_stock_qty = await calculate_converted_quantity(stock_qty_input, stock_unit_input, current_unit)
     if new_stock_qty is None:
         return False, f"❌ Stock Conversion Failed: Could not convert {stock_unit_input} to {current_unit} for stock set."
 
 
     # --- 3. Calculate New Cost Per Stored Unit (Absolute Set) ---
+    # Goal: Convert price_cost_input (€1.25/kg) to the price per stored unit (€X/g).
     
-    # We need the conversion factor (Input Unit -> Stored Unit)
-    # The new_cost_per_stored_unit = price_cost_input * (Conversion Rate from 1 unit of input to 1 unit of stored)
-    
-    # The simplest way to handle this price conversion is to ask the system: 
-    # "How many 'current_unit's are in one 'stock_unit_input'?"
-    
-    # Get the conversion rate for 1 unit of input to the stored unit (e.g., 1 kg -> 1000 g)
+    # 3a. Get the conversion factor: How many stored units are in ONE input unit (e.g., 1 kg = 1000 g).
+    # We use calculate_converted_quantity with an input of 1.0 to get this ratio.
     conversion_rate_for_price = await calculate_converted_quantity(1.0, stock_unit_input, current_unit)
     
     if conversion_rate_for_price is None or conversion_rate_for_price == 0:
         return False, f"❌ Price Conversion Failed: Invalid conversion rate found between {stock_unit_input} and {current_unit}."
 
-    # Calculation: The price per unit is now the input price divided by the amount of base units 
-    # contained in the input unit.
-    # Example: Price/kg (€1.25) / (1000 g / 1 kg) = Price/g (€0.00125)
+    # 3b. Calculation: New Cost = Input Price / Conversion Rate (Cost/Base Unit)
+    # Example: €1.25 / 1000 = €0.00125 per gram
     new_cost_per_stored_unit = price_cost_input / conversion_rate_for_price
 
     # --- 4. Prepare Atomic Update Data ---
@@ -336,15 +331,15 @@ async def atomic_combined_update(name: str, stock_qty_input: float, stock_unit_i
     
     update_success = False
     try:
-        # Assuming GOOGLE_SHEETS_NAME_BAKERY is the correct sheet variable name
-        update_success = await queries.update_row_by_id(GOOGLE_SHEETS_NAME_BAKERY, i_id, updates, user_id=user_id)
+        # Using the original sheet variable name: INGREDIENTS_SHEET
+        update_success = await queries.update_row_by_id(INGREDIENTS_SHEET, i_id, updates, user_id=user_id)
     except Exception as e:
         logging.error(f"DATABASE WRITE FAILED: Atomic update failed for ID {i_id}. Exception: {e}")
 
     # 6. Log history only if the atomic update succeeded
     if update_success:
-        # NOTE: Logging price and stock history should occur here.
-
+        # Assuming history logging happens here if needed.
+        
         return True, (
             f"✅ **Atomic Update Success for {name}**\n"
             f"📦 Stock set to: `{new_stock_qty:.4f} {current_unit}`\n"

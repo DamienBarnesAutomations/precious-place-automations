@@ -454,7 +454,7 @@ async def _handle_stock_adjustment_action(update: Update, data: dict) -> str:
         logging.error(f"Stock adjustment failed for '{user_input_name}'. Error: {message}")
         return f"❌ Failed to adjust stock for {user_input_name}. {message}"
 
-async def handle_unified_status_check(update: Update, data: dict) -> None:
+async def handle_unified_status_check(update: Update, data: dict) -> str:
     """
     Handles the Unified Status Check pattern (P3.E1).
     """
@@ -462,18 +462,18 @@ async def handle_unified_status_check(update: Update, data: dict) -> None:
     ingredient_name = data.get('name', '').strip()
 
     if not ingredient_name:
-        await update.message.reply_text("❌ Input Error: Please specify the ingredient name.")
-        return
+        return "❌ Input Error: Please specify the ingredient name."
+        
 
     # 2. Call the service function
     success, message = await ingredients.get_ingredient_status(ingredient_name)
 
     # 3. Reply to the user using HTML for rich formatting
-    await update.message.reply_html(message)
+    return message
 
     # Note: This is a standalone check, so no conversation state change is needed.
 
-async def handle_combined_inventory_set(update: Update, data: dict) -> None:
+async def handle_combined_inventory_set(update: Update, data: dict) -> str:
     """
     P3.E2: Handles the user's request to simultaneously set a new stock quantity 
     and a new price, utilizing a single atomic database call.
@@ -495,16 +495,16 @@ async def handle_combined_inventory_set(update: Update, data: dict) -> None:
 
     # 1c. Safety check for mandatory fields
     if not ingredient_name or not stock_unit:
-        await update.message.reply_text("❌ Input Error: Missing ingredient name or stock unit. Example: `flour stock 15kg price 1.5`")
-        return
+        return "❌ Input Error: Missing ingredient name or stock unit. Example: `flour stock 15kg price 1.5`"
+        
 
     try:
         # Convert strings to required types
         stock_qty = float(stock_qty_str)
         price_cost = float(price_cost_str)
     except (ValueError, TypeError):
-        await update.message.reply_text("❌ Input Error: Both stock quantity and price must be valid numbers.")
-        return
+        return "❌ Input Error: Both stock quantity and price must be valid numbers."
+        
 
     user_id = update.effective_user.id
     logging.info(f"ACTION: Combined inventory set detected for '{ingredient_name}'.")
@@ -520,7 +520,7 @@ async def handle_combined_inventory_set(update: Update, data: dict) -> None:
     )
 
     # 3. Final Reply
-    await update.message.reply_html(message)
+    return message
     
 async def handle_stock_usage(update: Update, data: dict) -> str:
         
