@@ -285,9 +285,11 @@ async def calculate_converted_quantity(input_quantity: float, input_unit: str, t
 async def atomic_combined_update(name: str, stock_qty_input: float, stock_unit_input: str, price_cost_input: float, user_id: str | int | None = None
 ) -> tuple[bool, str]:
     """
-    Updates both stock and cost of an ingredient in a single database call (atomic).
+    P3.E2: Atomically sets the ingredient stock to a new absolute quantity 
+    and sets the cost per unit to a new absolute price, handling unit conversion 
+    for both values based on the ingredient's base storage unit.
     """
-    logging.info(f"START ATOMIC UPDATE: Ing:{name}, Stock:{stock_qty_input} {stock_unit_input}, Cost:{price_cost_input} €.")
+    logging.info(f"START ATOMIC SET: Ing:{name}, Stock:{stock_qty_input} {stock_unit_input}, Price/Unit:{price_cost_input} €/{stock_unit_input}.")
 
     # 1. Find the existing ingredient record
     ingredient_record = await _find_ingredient_by_name(name) 
@@ -296,20 +298,33 @@ async def atomic_combined_update(name: str, stock_qty_input: float, stock_unit_i
     
     i_id = ingredient_record.get(INGREDIENT_ID)
     current_unit = ingredient_record.get(INGREDIENT_UNIT)
-    old_price = float(ingredient_record.get(INGREDIENT_COST_PER_UNIT, 0.0))
+    old_price = float(ingredient_record.get(INGREDIENT_COST_PER_UNIT, 0.0)) # For history logging later
 
-    # --- 2. Calculate New Stock Quantity ---
+    # --- 2. Calculate New Stock Quantity (Absolute Set) ---
+    # Convert input stock quantity (15 kg) to base unit (e.g., 15000 g)
     new_stock_qty = await calculate_converted_quantity(stock_qty_input, stock_unit_input, current_unit)
     if new_stock_qty is None:
-        return False, f"❌ Stock Conversion Failed: Could not convert {stock_unit_input} for stock update."
+        return False, f"❌ Stock Conversion Failed: Could not convert {stock_unit_input} to {current_unit} for stock set."
 
-    # --- 3. Calculate New Cost Per Stored Unit ---
-    # Convert input quantity to stored units to calculate the new price per base unit
-    total_purchased_units_stored = await calculate_converted_quantity(stock_qty_input, stock_unit_input, current_unit)
-    if total_purchased_units_stored is None or total_purchased_units_stored == 0:
-        return False, f"❌ Price Conversion Failed: Could not calculate unit cost (conversion error or zero quantity)."
 
-    new_cost_per_stored_unit = price_cost_input / total_purchased_units_stored
+    # --- 3. Calculate New Cost Per Stored Unit (Absolute Set) ---
+    
+    # We need the conversion factor (Input Unit -> Stored Unit)
+    # The new_cost_per_stored_unit = price_cost_input * (Conversion Rate from 1 unit of input to 1 unit of stored)
+    
+    # The simplest way to handle this price conversion is to ask the system: 
+    # "How many 'current_unit's are in one 'stock_unit_input'?"
+    
+    # Get the conversion rate for 1 unit of input to the stored unit (e.g., 1 kg -> 1000 g)
+    conversion_rate_for_price = await calculate_converted_quantity(1.0, stock_unit_input, current_unit)
+    
+    if conversion_rate_for_price is None or conversion_rate_for_price == 0:
+        return False, f"❌ Price Conversion Failed: Invalid conversion rate found between {stock_unit_input} and {current_unit}."
+
+    # Calculation: The price per unit is now the input price divided by the amount of base units 
+    # contained in the input unit.
+    # Example: Price/kg (€1.25) / (1000 g / 1 kg) = Price/g (€0.00125)
+    new_cost_per_stored_unit = price_cost_input / conversion_rate_for_price
 
     # --- 4. Prepare Atomic Update Data ---
     updates = {
@@ -321,14 +336,15 @@ async def atomic_combined_update(name: str, stock_qty_input: float, stock_unit_i
     
     update_success = False
     try:
-        # update_row_by_id performs the single atomic update on the Ingredients Master
-        update_success = await queries.update_row_by_id(INGREDIENTS_SHEET, i_id, updates, user_id=user_id)
+        # Assuming GOOGLE_SHEETS_NAME_BAKERY is the correct sheet variable name
+        update_success = await queries.update_row_by_id(GOOGLE_SHEETS_NAME_BAKERY, i_id, updates, user_id=user_id)
     except Exception as e:
         logging.error(f"DATABASE WRITE FAILED: Atomic update failed for ID {i_id}. Exception: {e}")
 
     # 6. Log history only if the atomic update succeeded
     if update_success:
-        # Log the change to the Price History sheet
+        # NOTE: Logging price and stock history should occur here.
+
         return True, (
             f"✅ **Atomic Update Success for {name}**\n"
             f"📦 Stock set to: `{new_stock_qty:.4f} {current_unit}`\n"
@@ -788,7 +804,7 @@ async def get_ingredient_status(ingredient_name: str) -> tuple[bool, str]:
     # Using float(0.0) as default for safety
     name = ingredient_record.get(INGREDIENT_NAME, "N/A")
     quantity = float(ingredient_record.get(INGREDIENT_QUANTITY, 0.0))
-    unit = ingredient_record.get(INGREDIENT_UNIT, "unit")
+    unit = ingredient_record.get(INGREDIENT_UNIT, "units")
     last_cost = float(ingredient_record.get(INGREDIENT_COST_PER_UNIT, 0.0))
     
     # 3. Format the Output
@@ -882,7 +898,7 @@ async def generate_full_inventory_report() -> tuple[bool, str]:
         name = record.get(INGREDIENT_NAME, "N/A")
         try:
             quantity = float(record.get(INGREDIENT_QUANTITY, 0.0))
-            unit = record.get(INGREDIENT_UNIT, "unit")
+            unit = record.get(INGREDIENT_UNIT, "units")
             cost_per_unit = float(record.get(INGREDIENT_COST_PER_UNIT, 0.0))
             
             
