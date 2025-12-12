@@ -23,12 +23,12 @@ BUY_REGEX = re.compile(
 
 # Regex 2: Handles STOCK ADJUSTMENT 
 ADJUSTMENT_REGEX = re.compile(
-    r"(?i)^(increase|decrease|adjust)\s+"  # Capture the action (increase/decrease/adjust)
-    r"(?P<name>.+?)\s+"  # Capture ingredient name (non-greedy)
-    r"(?:quantity|stock)\s+"  # Match "quantity" or "stock" (non-capturing)
-    r"by\s+"  # Match the preposition "by"
-    r"(?P<quantity>\d+(\.\d+)?)\s*?"  # Capture quantity, and make the trailing space optional (the fix is the \s*?)
-    r"(?P<unit>\w+)$"  # Capture the unit
+    r"(?i)^(?P<action>increase|decrease|adjust)\s+" # FIX: Capture the action (increase/decrease/adjust)
+    r"(?P<name>.+?)\s+"                          # Capture ingredient name (non-greedy)
+    r"(?:quantity|stock)\s+"                     # Match "quantity" or "stock" (non-capturing)
+    r"by\s+"                                     # Match the preposition "by"
+    r"(?P<quantity>\d+(\.\d+)?)\s*?"             # Capture quantity, and make the trailing space optional
+    r"(?P<unit>\w+)$"                            # Capture the unit
 )
 
 # Regex 3: Handles PRICE UPDATE
