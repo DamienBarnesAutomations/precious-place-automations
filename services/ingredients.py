@@ -862,3 +862,53 @@ async def adjust_ingredient_stock(name: str, input_quantity: float, input_unit: 
         )
     else:
         return False, f"❌ Failed to execute stock adjustment for {name}."
+
+async def generate_full_inventory_report() -> tuple[bool, str]:
+    """
+    Fetches all ingredients and formats them into a comprehensive inventory report.
+    Returns: (success_bool, status_message)
+    """
+    logging.info("START FULL INVENTORY REPORT GENERATION.")
+
+    # 1. Fetch All Ingredient Records
+    # Assuming queries.fetch_all_records(sheet_name) exists
+    all_records = await queries.fetch_all_records(INGREDIENTS_SHEET) 
+
+    if not all_records:
+        return False, "⚠️ **Inventory is Empty.** Please use the **Record Purchase** command to add ingredients."
+    
+    # 2. Sort and Format Data
+    # Sort by ingredient name for better readability
+    sorted_records = sorted(all_records, key=lambda r: r.get(INGREDIENT_NAME_KEY, "").lower())
+
+    report_lines = []
+    total_value = 0.0
+    
+    for record in sorted_records:
+        name = record.get(INGREDIENT_NAME, "N/A")
+        try:
+            quantity = float(record.get(INGREDIENT_Quantity, 0.0))
+            unit = record.get(UNIT_KEY, "unit")
+            cost_per_unit = float(record.get(INGREDIENT_COST_PER_UNIT, 0.0))
+            
+            
+            # Format line: Name | Stock | Value
+            report_lines.append(
+                f"• **{name}**: `{quantity:.2f} {unit}` (€{item_value:.2f})"
+            )
+        except (ValueError, TypeError) as e:
+            logging.warning(f"Skipping malformed ingredient record for {name}: {e}")
+            report_lines.append(f"• **{name}**: ⚠️ Data Error")
+
+
+    # 3. Construct the Final Report Message
+    
+    report_message = (
+        "📈 **Current Inventory Report**\n\n"
+        "**Stock Details:**\n"
+        f"{' \n'.join(report_lines)}\n\n"
+            
+    )
+
+    logging.info("END FULL INVENTORY REPORT SUCCESS.")
+    return True, report_message

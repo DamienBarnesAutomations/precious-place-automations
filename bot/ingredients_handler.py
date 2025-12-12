@@ -134,6 +134,13 @@ STOCK_USAGE_REGEX_MODIFIED = re.compile(
     r"(?P<name>.+?)$"                           # Capture ingredient name
 )
 
+INVENTORY_REPORT_REGEX = re.compile(
+    r"(?i)"                                     # Case-insensitive
+    r"^(?:show|display|list)\s+(?:my\s+)?(inventory|stock|all)\?*$" # Match show/list/display inventory/stock/all
+    r"|"                                        # OR
+    r"^(?:full|current)\s+report\?*$"           # Match full/current report
+)
+
 
 STOP_REGEX = re.compile(r'(?i)^STOP$')
 
@@ -557,6 +564,18 @@ async def handle_stock_addition(update: Update, data: dict) -> None:
         user_id=update.effective_user.id
     )
     await update.message.reply_html(message)
+    
+async def handle_inventory_report(update: Update, data: dict) -> None:
+    """
+    P3.E7: Handles the request to display the full list of ingredients and stock levels.
+    """
+    # 1. Call the service function
+    success, message = await generate_full_inventory_report()
+
+    # 2. Reply to the user using HTML
+    await update.message.reply_html(message)
+    
+    # Optional: If the report is long, send it as a file/document instead of a chat message.
 
 # --- Main Dispatcher ---
 
@@ -603,6 +622,9 @@ async def dispatch_nlp_action(update: Update, context: ContextTypes.DEFAULT_TYPE
         
         elif match := COMBINED_UPDATE_REGEX.match(text):
             reply = await handle_combined_inventory_set(update, match.groupdict())
+            
+        elif match := INVENTORY_REPORT_REGEX.match(text):    
+            reply = await handle_inventory_report(update, match.groupdict())
             
         elif match := STOP_REGEX.match(text):
             return exit_manager_mode(update)
