@@ -548,7 +548,8 @@ async def handle_stock_addition(update: Update, data: dict) -> None:
        
     # 1. Extract and Validate Input
     name = data.get('name', '').strip()
-    input_unit = data.get('unit', '').strip() # Note: Using the unit as captured (optional if P3.E6 is integrated)
+    input_unit = (data.get('unit') or '').strip()
+    
     try:
         input_qty = float(data.get('quantity'))
     except (ValueError, TypeError):
