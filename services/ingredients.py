@@ -894,7 +894,7 @@ async def generate_full_inventory_report() -> tuple[bool, str]:
             
             # Format line: Name | Stock | Value
             report_lines.append(
-                f"• **{name}**: `{quantity:.2f} {unit}` (€{item_value:.2f})"
+                f"• **{name}**: `{quantity:.2f} {unit}` (${cost_per_unit:.2f})"
             )
         except (ValueError, TypeError) as e:
             logging.warning(f"Skipping malformed ingredient record for {name}: {e}")
