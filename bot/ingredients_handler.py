@@ -522,7 +522,7 @@ async def handle_combined_inventory_set(update: Update, data: dict) -> None:
     # 3. Final Reply
     await update.message.reply_html(message)
     
-async def handle_stock_usage(update: Update, data: dict) -> None:
+async def handle_stock_usage(update: Update, data: dict) -> str:
         
     # 1. Extract and Validate Input
     name = data.get('name', '').strip()
@@ -531,8 +531,8 @@ async def handle_stock_usage(update: Update, data: dict) -> None:
     try:
         input_qty = float(data.get('quantity'))
     except (ValueError, TypeError):
-        await update.message.reply_text("❌ Input Error: Usage quantity must be a valid number.")
-        return
+        return "❌ Input Error: Usage quantity must be a valid number."
+        
 
     # 2. Call Adjustment Service (is_addition=False)
     success, message = await ingredients.adjust_ingredient_stock(
@@ -542,7 +542,7 @@ async def handle_stock_usage(update: Update, data: dict) -> None:
         is_addition=False,
         user_id=update.effective_user.id
     )
-    await update.message.reply_html(message)
+    return message
 
 # P3.E3b: Handle Stock Addition
 async def handle_stock_addition(update: Update, data: dict) -> None:

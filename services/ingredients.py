@@ -262,7 +262,7 @@ async def calculate_converted_quantity(input_quantity: float, input_unit: str, t
     input_unit = input_unit.strip().lower()
     target_unit = target_unit.strip().lower()
 
-    if input_unit == target_unit:
+    if input_unit == target_unit or input_unit == '':
         return input_quantity
     
     try:
