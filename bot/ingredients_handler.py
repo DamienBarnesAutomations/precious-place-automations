@@ -148,15 +148,15 @@ INGREDIENTS_MANAGER_WELCOME_MESSAGE = (
     "🥐 <b>Ingredients Inventory Manager</b>\n\n"
     "Welcome! The system is now optimized for **quick, fluid commands**.\n\n"
     
-    "--- <b>Quick Actions (New Fluid Commands)</b> ---\n\n"
+    "--- <b>Quick Actions</b> ---\n\n"
     
-    "1. **Check Status (P3.E1):** View Stock, Unit, and Last Cost.\n"
+    "1. **Check Status:** View Stock, Unit, and Last Cost.\n"
     "   e.g. <code>What is the status of Flour?</code>\n\n"
     
-    "2. **Stock Usage (P3.E3):** Decrement stock automatically.\n"
+    "2. **Ingredient Usage:** Decrement stock automatically.\n"
     "   e.g. <code>Used 50g of sugar</code> or <code>Consumed 2 eggs</code>\n\n"
     
-    "3. **Combined Set (P3.E2):** Update Stock and Price atomically.\n"
+    "3. **Combined Set:** Update Stock and Price atomically.\n"
     "   e.g. <code>Flour stock 15kg price 1.25</code>\n\n"
     
     "--- <b>Standard Actions</b> ---\n\n"
@@ -170,6 +170,9 @@ INGREDIENTS_MANAGER_WELCOME_MESSAGE = (
     "6. **Price Update:** Update cost per base unit.\n"
     "   e.g. <code>1 kg Flour is now 5</code>\n\n"
     
+    "7. **Show Inventory:** Shows all Ingredients in Inventory\n"
+    "   e.g. <code>Show Inventory</code>\n\n"
+    
     "To exit the mode, type <code>STOP</code>."
 )
 
@@ -179,22 +182,28 @@ INGREDIENTS_MANAGER_FALLBACK_MESSAGE = (
     
     "--- <b>Quick Actions (Recommended)</b> ---\n\n"
     
-    "1. **Check Status (P3.E1):** View Stock and Price.\n"
+    "1. **Check Status:** View Stock, Unit, and Last Cost.\n"
     "   e.g. <code>What is the status of Flour?</code>\n\n"
     
-    "2. **Stock Usage (P3.E3):** Tell me what you used.\n"
-    "   e.g. <code>Used 50g of sugar</code>\n\n"
+    "2. **Ingredient Usage:** Decrement stock automatically.\n"
+    "   e.g. <code>Used 50g of sugar</code> or <code>Consumed 2 eggs</code>\n\n"
     
-    "3. **Combined Set (P3.E2):** Update Stock and Price at once.\n"
+    "3. **Combined Set:** Update Stock and Price atomically.\n"
     "   e.g. <code>Flour stock 15kg price 1.25</code>\n\n"
     
     "--- <b>Standard Actions</b> ---\n\n"
     
-    "4. **Record Purchase:** (Full Purchase Transaction)\n"
+    "4. **Record Purchase (Buy/Add):** Full purchase transaction.\n"
     "   e.g. <code>Bought 1 kg Flour for 5</code>\n\n"
     
-    "5. **Set Stock:** (Absolute Override)\n"
+    "5. **Set Stock (Absolute):** Override current stock total.\n"
     "   e.g. <code>Set Flour stock to 5 kg</code>\n\n"
+    
+    "6. **Price Update:** Update cost per base unit.\n"
+    "   e.g. <code>1 kg Flour is now 5</code>\n\n"
+    
+    "7. **Show Inventory:** Shows all Ingredients in Inventory\n"
+    "   e.g. <code>Show Inventory</code>\n\n"
     
     "Type <code>STOP</code> to exit Manager Mode."
 )
@@ -570,7 +579,7 @@ async def handle_inventory_report(update: Update, data: dict) -> None:
     P3.E7: Handles the request to display the full list of ingredients and stock levels.
     """
     # 1. Call the service function
-    success, message = await generate_full_inventory_report()
+    success, message = await ingredients.generate_full_inventory_report()
 
     # 2. Reply to the user using HTML
     await update.message.reply_html(message)
