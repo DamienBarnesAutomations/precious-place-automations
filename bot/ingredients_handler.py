@@ -436,11 +436,21 @@ async def _handle_stock_adjustment_action(update: Update, data: dict) -> str:
     user_id = update.effective_user.username if update.effective_user else None
 
     logging.info(f"ACTION: Stock adjustment detected for {user_input_name}: {action} by {input_quantity} {input_unit} (User: {user_id}).")
+    
+    action_clean = action.strip().lower()
+    logging.info(f"START ADJUST STOCK: {action_clean} stock for '{name}' by {input_quantity} {input_unit} (User: {user_id}).")
+    
+    if action_clean in ['increase', 'add']:
+        is_addition = True
+    elif action_clean in ['decrease', 'subtract', 'adjust']:
+        is_addition = False
+    else:
+        logging.error(f"INVALID ACTION: Unknown adjustment action '{action_clean}' provided.")
+        return False, f"Invalid stock action: '{action_clean}'. Must be increase or decrease."
 
     # Call the service function
     success, message = await ingredients.adjust_ingredient_stock(
         name=user_input_name,
-        action=action, # Pass the action directly
         input_quantity=input_quantity,
         input_unit=input_unit,
         user_id=user_id
